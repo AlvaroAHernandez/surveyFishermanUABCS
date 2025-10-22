@@ -1,0 +1,1516 @@
+{
+  "cuestionario": {
+    "titulo": "ENTREVISTA INCLUSIÓN FINANCIERA Y USO DE LAS TECONOLOGÍAS EN EL SECTOR PESQUERO Y ACUÍCOLA DE BAJA CALIFORNIA SUR",
+    "descripcion": "Nos dirigimos a usted para solicitar su colaboración en el proyecto titulado Inclusión financiera para el desarrollo productivo del sector pesquero un pilar estratégico de BCS, México: Acuicultura y pesca de pequeña escala\" (PEE- 2025-G-507 SECIHTY). El propósito de este estudio es determinar los niveles de inclusión financiera y digital en el sector pesca y acuacultura de pequeña escala, específicamente en pescadores y productores acuícolas de localidades del estado de Baja California Sur, junto con sus familias. Con ello, buscamos promover mecanismos y acciones que reduzcan la vulnerabilidad económica de estas comunidades y mejoren su inclusión en el ámbito financiero y tecnológico. Sus respuestas serán tratadas con absoluta confidencialidad. Agradecemos de antemano su participación y contribución a este relevante proyecto.",
+    "secciones": [
+      {
+        "id_seccion": 1,
+        "titulo": "DATOS DE IDENTIFICACIÓN",
+        "preguntas": [
+          {
+            "id": "1.1",
+            "texto": "Lugar de la encuesta:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "1.2",
+            "texto": "Nombre del encuestador",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "1.3",
+            "texto": "Fecha:",
+            "tipo": "fecha"
+          },
+          {
+            "id": "1.4",
+            "texto": "ID Encuesta:",
+            "tipo": "texto_abierto"
+          }
+        ]
+      },
+      {
+        "id_seccion": 2,
+        "titulo": "INFORMACION DEL ENCUESTADO",
+        "preguntas": [
+          {
+            "id": "2.1",
+            "texto": "Nombre:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "2.2",
+            "texto": "Domicilio:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "2.3",
+            "texto": "Correo:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "2.4",
+            "texto": "Celular:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "2.5",
+            "texto": "Es usted:",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "Cooperativista",
+              "Permisionario",
+              "Pescador libre",
+              "Arrendador de permiso",
+              "Otro"
+            ],
+            "sub_preguntas": [
+              {
+                "id": "2.5.1",
+                "texto": "*SCPP y puesto:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Cooperativista"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id_seccion": 3,
+        "titulo": "INFORMACIÓN DEMOGRÁFICA",
+        "preguntas": [
+          {
+            "id": "3.1",
+            "texto": "Edad:",
+            "tipo": "numerico"
+          },
+          {
+            "id": "3.2",
+            "texto": "Rango de Edad:",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "<20",
+              "21-30",
+              "31-40",
+              "41-50",
+              "51-60",
+              "61-70",
+              "70 o más"
+            ]
+          },
+          {
+            "id": "3.3",
+            "texto": "Escolaridad:",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "Primaria",
+              "Secundaria",
+              "Preparatoria",
+              "Universidad",
+              "Otro"
+            ],
+            "sub_preguntas": [
+              {
+                "id": "3.3.1",
+                "texto": "Especifique:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Otro"
+              }
+            ]
+          },
+          {
+            "id": "3.3.2",
+            "texto": "Estado Escolaridad:",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "Terminada",
+              "Trunca"
+            ]
+          },
+          {
+            "id": "3.4",
+            "texto": "Estado civil:",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "Soltero",
+              "Casado",
+              "Divorciado",
+              "Unión Libre",
+              "Otro"
+            ]
+          },
+          {
+            "id": "3.5",
+            "texto": "Hijos:",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "3.5.1",
+                "texto": "No. de Hijos:",
+                "tipo": "numerico",
+                "condicional_en": "Si"
+              }
+            ]
+          },
+          {
+            "id": "3.6",
+            "texto": "Escolaridad de los hijos:",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "Primaria",
+              "Secundaria",
+              "Preparatoria",
+              "Universidad",
+              "Otro"
+            ],
+            "sub_preguntas": [
+              {
+                "id": "3.6.1",
+                "texto": "Especifique:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Otro"
+              }
+            ]
+          },
+          {
+            "id": "3.6.2",
+            "texto": "Estado Escolaridad (hijos):",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "Terminada",
+              "Trunca"
+            ]
+          },
+          {
+            "id": "3.7",
+            "texto": "Ocupación (hijo (s)):",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "3.8",
+            "texto": "Cantidad de personas dependientes económicamente de usted:",
+            "tipo": "numerico"
+          },
+          {
+            "id": "3.9",
+            "texto": "Vivienda:",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "propia",
+              "prestada",
+              "renta",
+              "Otro"
+            ],
+            "sub_preguntas": [
+              {
+                "id": "3.9.0",
+                "texto": "Especifique (Otro):",
+                "tipo": "texto_abierto",
+                "condicional_en": "Otro"
+              },
+              {
+                "id": "3.9.1",
+                "texto": "Especificar $ en caso de renta:",
+                "tipo": "numerico",
+                "condicional_en": "renta"
+              }
+            ]
+          },
+          {
+            "id": "3.9.2",
+            "texto": "Material de la vivienda:",
+            "tipo": "grupo_preguntas",
+            "instrucciones": "Claves: a) piso tierra; b) piso concreto; c) azulejo o vitropiso; c) pared de block; d) pared de ladrillo; e) pared de madera; f) pared de lámina; g) pared de cartón; h) techo de cemento o vaciado; i) techo de madera; j) techo de lámina; k) techo de cartón; l) hoja de palma.",
+            "preguntas": [
+              {
+                "id": "3.9.2.1",
+                "texto": "Piso",
+                "tipo": "texto_abierto"
+              },
+              {
+                "id": "3.9.2.2",
+                "texto": "Paredes",
+                "tipo": "texto_abierto"
+              },
+              {
+                "id": "3.9.2.3",
+                "texto": "Techo",
+                "tipo": "texto_abierto"
+              },
+              {
+                "id": "3.9.2.4",
+                "texto": "Otra",
+                "tipo": "texto_abierto"
+              }
+            ]
+          },
+          {
+            "id": "3.10",
+            "texto": "Energía eléctrica:",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "Energía CFE",
+              "Energía eléctrica autogenerada (paneles, planta eléctrica, etc.)"
+            ]
+          },
+          {
+            "id": "3.11",
+            "texto": "Agua potable:",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "Conectada a red municipal",
+              "abasto por pipa",
+              "autoabastecimiento"
+            ]
+          },
+          {
+            "id": "3.12",
+            "texto": "Drenaje:",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "Conectado a red municipal",
+              "Drenaje fosa séptica"
+            ]
+          },
+          {
+            "id": "3.13",
+            "texto": "No. de personas que viven en su hogar:",
+            "tipo": "numerico"
+          },
+          {
+            "id": "3.14",
+            "texto": "¿Cuenta con servicio médico?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "3.14.1",
+                "texto": "¿Cuál?",
+                "tipo": "opcion_multiple",
+                "condicional_en": "Si",
+                "opciones": [
+                  "IMSS",
+                  "ISSSTE",
+                  "INSABI",
+                  "Otro"
+                ],
+                "sub_preguntas": [
+                  {
+                    "id": "3.14.1.1",
+                    "texto": "Especifique (Otro):",
+                    "tipo": "texto_abierto",
+                    "condicional_en": "Otro"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "3.15",
+            "texto": "Usted o alguien en su hogar padece alguna enfermedad crónica?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "3.15.1",
+                "texto": "¿Cuál?",
+                "tipo": "seleccion_multiple",
+                "condicional_en": "Si",
+                "opciones": [
+                  "Diabetes",
+                  "Hipertensión",
+                  "Otra"
+                ],
+                "sub_preguntas": [
+                  {
+                    "id": "3.15.1.1",
+                    "texto": "Otra:",
+                    "tipo": "texto_abierto",
+                    "condicional_en": "Otra"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "3.16",
+            "texto": "¿Cuántas horas en promedio de ocio o recreación dedica a la semana?",
+            "tipo": "numerico"
+          },
+          {
+            "id": "3.17",
+            "texto": "¿Algún familiar que vive con usted tiene un empleo o ejerce una actividad ajena a la pesca que genere ingresos?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "3.17.1",
+                "texto": "¿Cuál?",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              }
+            ]
+          },
+          {
+            "id": "3.18",
+            "texto": "¿Qué cantidad promedio mensual obtiene usted de ingreso por el tiempo dedicado a pescar?",
+            "tipo": "numerico"
+          },
+          {
+            "id": "3.19",
+            "texto": "¿Qué cantidad promedio mensual obtienen los familiares que viven con usted adicionalmente a su ingreso?",
+            "tipo": "numerico"
+          }
+        ]
+      },
+      {
+        "id_seccion": 4,
+        "titulo": "ASPECTOS ECONÓMICOS DETERMINANTES",
+        "preguntas": [
+          {
+            "id": "4.1",
+            "texto": "¿Sale usted a pescar o contrata a otra persona?",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "Sólo",
+              "Contrato",
+              "Ambas",
+              "Socios"
+            ]
+          },
+          {
+            "id": "4.2",
+            "texto": "¿Cuánto gasta en promedio por viaje de pesca en combustible?",
+            "tipo": "numerico"
+          },
+          {
+            "id": "4.3",
+            "texto": "¿Cuánto gasta en promedio por viaje de pesca en alimentos (lunch)?",
+            "tipo": "numerico"
+          },
+          {
+            "id": "4.4",
+            "texto": "¿Cuánto invierte en promedio en promedio mensualmente en material para sus artes de pesca?",
+            "tipo": "numerico"
+          },
+          {
+            "id": "4.5",
+            "texto": "¿Cuántas horas utiliza al día en promedio para pescar, incluyendo traslados?",
+            "tipo": "numerico"
+          },
+          {
+            "id": "4.6",
+            "texto": "¿Cuántos días a la semana trabaja?",
+            "tipo": "numerico"
+          },
+          {
+            "id": "4.7",
+            "texto": "¿Hace campamentos?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "4.7.1",
+                "texto": "Lugar:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              },
+              {
+                "id": "4.7.2",
+                "texto": "tiempo (días):",
+                "tipo": "numerico",
+                "condicional_en": "Si"
+              },
+              {
+                "id": "4.7.3",
+                "texto": "Gasto alimentos:",
+                "tipo": "numerico",
+                "condicional_en": "Si"
+              }
+            ]
+          },
+          {
+            "id": "4.7.4",
+            "texto": "Especie(s) objetivo",
+            "tipo": "grid_seleccion",
+            "instrucciones": "Marque los meses para cada especie",
+            "filas": [
+              "Huachinango",
+              "Abulón",
+              "Almeja chocolate",
+              "Almeja Catarina",
+              "Almeja generosa",
+              "Almeja pata de mula",
+              "Camarón",
+              "Cabrilla",
+              "Cadernal",
+              "Callo de hacha",
+              "Cazón",
+              "Cochito",
+              "Estacuda",
+              "Erizo",
+              "Jaiba",
+              "Jurel",
+              "Lenguado",
+              "Ostión",
+              "Pargo",
+              "Pierna",
+              "Pargo mulato",
+              "Pargo alazan",
+              "Perico",
+              "Sierra",
+              "Tiburón",
+              "Pepino",
+              "Verdillo",
+              "Vaquita",
+              "Otras"
+            ],
+            "columnas": [
+              "Ene",
+              "Feb",
+              "Mar",
+              "Abr",
+              "May",
+              "Jun",
+              "Jul",
+              "Ago",
+              "Sep",
+              "Oct",
+              "Nov",
+              "Dic"
+            ]
+          }
+        ]
+      },
+      {
+        "id_seccion": 5,
+        "titulo": "RELACIÓN CON COMPRADORES Y ARTICULACIÓN COMERCIAL",
+        "preguntas": [
+          {
+            "id": "5.1",
+            "texto": "¿A quién vende su captura?",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "Intermediario",
+              "Locales a pie de playa",
+              "Mercados locales",
+              "Restaurantes",
+              "Otro"
+            ],
+            "sub_preguntas": [
+              {
+                "id": "5.1.1",
+                "texto": "Especifique:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Otro"
+              }
+            ]
+          },
+          {
+            "id": "5.2",
+            "texto": "Comercia de especies más importantes que maneja:",
+            "tipo": "tabla",
+            "permite_multiples_filas": true,
+            "columnas": [
+              {
+                "id": "col_especie",
+                "texto": "Especie"
+              },
+              {
+                "id": "col_comprador",
+                "texto": "Comprador"
+              },
+              {
+                "id": "col_contacto",
+                "texto": "Contacto (dirección o celular)"
+              },
+              {
+                "id": "col_precio",
+                "texto": "Precio (min - max)"
+              },
+              {
+                "id": "col_hielo_captura",
+                "texto": "¿Usa hielo durante su captura?"
+              },
+              {
+                "id": "col_hielo_desem",
+                "texto": "¿Usa hielo después del desembarco?"
+              },
+              {
+                "id": "col_avitualla",
+                "texto": "¿Avitualla?"
+              }
+            ]
+          },
+          {
+            "id": "5.3_tabla",
+            "texto": "¿Usted o algún miembro de su familia realiza algún trabajo alternativo o adicional a la pesca?",
+            "tipo": "tabla",
+            "instrucciones": "Actividades: Ecoturismo, avistamiento de ballenas, pesca deportiva, avistamiento de aves, buceo y/o snorquel, capitán de embarcación (préstamo de servicio), preparación de alimentos, otra actividad.",
+            "permite_multiples_filas": true,
+            "columnas": [
+              {
+                "id": "col_actividad",
+                "texto": "Actividad económica complementaria (Combinada o en épocas de no pesca)"
+              },
+              {
+                "id": "col_desc",
+                "texto": "Descripción"
+              },
+              {
+                "id": "col_meses",
+                "texto": "Meses de actividad (E F M A M J J A S O N D)"
+              },
+              {
+                "id": "col_gasto",
+                "texto": "Gasto promedio mensual"
+              },
+              {
+                "id": "col_ingreso",
+                "texto": "Ingreso promedio mensual"
+              },
+              {
+                "id": "col_familiar",
+                "texto": "Otro miembro de la familia que lo realice"
+              }
+            ]
+          },
+          {
+            "id": "5.3_viajes",
+            "texto": "¿Cuántos viajes en promedio realiza al mes?",
+            "tipo": "numerico"
+          },
+          {
+            "id": "5.3.1",
+            "texto": "¿Cuántas horas invierte al día en estas actividades?",
+            "tipo": "numerico"
+          },
+          {
+            "id": "5.4",
+            "texto": "¿Considera realizar alguna actividad económica alternativa a la pesca en un futuro?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "5.4.1",
+                "texto": "Especifique:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id_seccion": 6,
+        "titulo": "ACUICULTURA-CULTIVO",
+        "preguntas": [
+          {
+            "id": "6.1",
+            "texto": "¿Desde qué año realiza acuacultura?",
+            "tipo": "numerico"
+          },
+          {
+            "id": "6.2",
+            "texto": "Si realizó acuicultura y decidió abandonar la actividad: ¿Cuál fue la principal razón para dejarla?",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "6.3",
+            "texto": "¿Ha realizado actividades de repoblamiento-cultivo?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "6.3.1",
+                "texto": "¿Continúa practicando repoblamiento/ cultivo?",
+                "tipo": "si_no",
+                "condicional_en": "Si"
+              }
+            ]
+          },
+          {
+            "id": "6.4",
+            "texto": "¿Qué es lo que trabaja de repoblamiento/cultivo?",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "Moluscos",
+              "Crustáceos",
+              "Escama",
+              "Algas"
+            ],
+            "sub_preguntas": [
+              {
+                "id": "6.4.1",
+                "texto": "Especie:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Moluscos"
+              },
+              {
+                "id": "6.4.2",
+                "texto": "Especie:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Crustáceos"
+              },
+              {
+                "id": "6.4.3",
+                "texto": "Especie:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Escama"
+              },
+              {
+                "id": "6.4.4",
+                "texto": "Especie:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Algas"
+              }
+            ]
+          },
+          {
+            "id": "6.5",
+            "texto": "¿Qué especies utiliza actualmente?",
+            "tipo": "seleccion_multiple",
+            "opciones": [
+              "almeja",
+              "callo de hacha",
+              "ostión",
+              "Otra(s)"
+            ],
+            "sub_preguntas": [
+              {
+                "id": "6.5.1",
+                "texto": "Otra(s) Especie:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Otra(s)"
+              }
+            ]
+          },
+          {
+            "id": "6.6",
+            "texto": "¿En qué fases del proceso se ha encontrado con más problemas?",
+            "tipo": "seleccion_multiple",
+            "opciones": [
+              "Compra de semilla",
+              "Crecimiento (fijación)",
+              "Pre engorda",
+              "Engorda",
+              "Colecta (captura)",
+              "Almacenamiento",
+              "Venta",
+              "Adquirir material",
+              "Vigilancia de las zonas",
+              "Otro"
+            ],
+            "sub_preguntas": [
+              {
+                "id": "6.6.1",
+                "texto": "Otro:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Otro"
+              }
+            ]
+          },
+          {
+            "id": "6.7",
+            "texto": "¿Cuál cree usted que sean los principales problemas de la acuicultura en la zona? (Facilidad)",
+            "tipo": "escala_evaluacion",
+            "instrucciones": "Evalúe de 1 a 15:",
+            "escala": [
+              {
+                "valor": 1,
+                "etiqueta": "Muy fácil"
+              },
+              {
+                "valor": 2,
+                "etiqueta": "Fácil"
+              },
+              {
+                "valor": 3,
+                "etiqueta": "Neutral"
+              },
+              {
+                "valor": 4,
+                "etiqueta": "Difícil"
+              },
+              {
+                "valor": 5,
+                "etiqueta": "Muy Difícil"
+              }
+            ],
+            "items": [
+              {
+                "id": "6.7.1",
+                "texto": "Obtener permisos gubernamentales para realizar repoblación-cultivo"
+              },
+              {
+                "id": "6.7.2",
+                "texto": "Conseguir la semilla cuando se requiere"
+              },
+              {
+                "id": "6.7.3",
+                "texto": "Cuidar de los organismos y de las zonas de cultivo"
+              },
+              {
+                "id": "6.7.4",
+                "texto": "La identificación de alguna enfermedad en el organismo cultivado"
+              },
+              {
+                "id": "6.7.5",
+                "texto": "La cura o atención a parásitos que matan o afectan la calidad del producto"
+              },
+              {
+                "id": "6.7.6",
+                "texto": "Cumplir los requisitos de empaquetado y presentación del producto que pide el comprador"
+              },
+              {
+                "id": "6.7.7",
+                "texto": "La organización de actividades de pesca-cultivo, personales o en grupos de trabajo"
+              },
+              {
+                "id": "6.7.8",
+                "texto": "La adaptación a realizar actividades necesarias pero diferentes a la pesca"
+              },
+              {
+                "id": "6.7.9",
+                "texto": "La organización entre los equipos de trabajo"
+              },
+              {
+                "id": "6.7.10",
+                "texto": "La comunicación entre los participantes de la actividad de acuicultura"
+              },
+              {
+                "id": "6.7.11",
+                "texto": "Reducción del Tiempo que pasa entre la pesca y la limpieza (desconche)"
+              },
+              {
+                "id": "6.7.12",
+                "texto": "Transporte de la zona de pesca al área de almacén o empaquetado"
+              },
+              {
+                "id": "6.7.13",
+                "texto": "Almacenamiento de la cosecha para su distribución y venta"
+              },
+              {
+                "id": "6.7.14",
+                "texto": "La competencia con otros productores/pescadores para vender el producto"
+              },
+              {
+                "id": "6.7.15",
+                "texto": "Vender el producto a un precio justo"
+              }
+            ]
+          },
+          {
+            "id": "6.8",
+            "texto": "¿Cuál cree usted que sean los principales problemas de la acuicultura en la zona? (Importancia)",
+            "tipo": "escala_evaluacion",
+            "instrucciones": "Evalúe de 16 a 22:",
+            "escala": [
+              {
+                "valor": "a",
+                "etiqueta": "No es importante"
+              },
+              {
+                "valor": "b",
+                "etiqueta": "Poco importante"
+              },
+              {
+                "valor": "c",
+                "etiqueta": "Neutral"
+              },
+              {
+                "valor": "d",
+                "etiqueta": "Importante"
+              },
+              {
+                "valor": "e",
+                "etiqueta": "Muy importante"
+              }
+            ],
+            "items": [
+              {
+                "id": "6.8.16",
+                "texto": "Falta de insumos como semilla"
+              },
+              {
+                "id": "6.8.17",
+                "texto": "Mala organización en la producción"
+              },
+              {
+                "id": "6.8.18",
+                "texto": "Falta de vigilancia de las zonas"
+              },
+              {
+                "id": "6.8.19",
+                "texto": "Cambios en el clima"
+              },
+              {
+                "id": "6.8.20",
+                "texto": "Precio del producto"
+              },
+              {
+                "id": "6.8.21",
+                "texto": "Falta de mercado"
+              },
+              {
+                "id": "6.8.22",
+                "texto": "Conflictos entre los participantes"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id_seccion": 7,
+        "titulo": "USO DE TECNOLOGÍAS DE LA INFORMACIÓN Y COMUNICACIÓN EN LA ACTIVIDAD PESQUERA",
+        "preguntas": [
+          {
+            "id": "7.1",
+            "texto": "¿Con cuántos de los siguientes bienes dispone?",
+            "tipo": "seleccion_multiple",
+            "opciones": [
+              "Radio",
+              "Televisor",
+              "Teléfono celular básico",
+              "Teléfono inteligente",
+              "Computadora de escritorio",
+              "Computadora portátil (laptop)",
+              "Tablet",
+              "GPS",
+              "Sistema de Teledetección",
+              "Eco sonda o Sonar",
+              "Otro(s)"
+            ],
+            "sub_preguntas": [
+              {
+                "id": "7.1.0",
+                "texto": "Otro(s):",
+                "tipo": "texto_abierto",
+                "condicional_en": "Otro(s)"
+              }
+            ]
+          },
+          {
+            "id": "7.1.1",
+            "texto": "¿Y por qué no?",
+            "tipo": "seleccion_multiple",
+            "instrucciones": "Razones por las que no dispone de los bienes",
+            "opciones": [
+              "a) Falta de recursos económicos",
+              "b) No les interesa o no lo necesitan",
+              "c) No saben usarlo",
+              "d) Desconocen su utilidad",
+              "f) Equipo insuficiente o capacidad",
+              "g) No hay servicio en su localidad (falta de infraestructura)",
+              "h) Tienen acceso a internet en otros lugares",
+              "i) Por razones relacionadas a la privacidad o seguridad",
+              "j) otros"
+            ],
+            "sub_preguntas": [
+              {
+                "id": "7.1.1.1",
+                "texto": "Otros (mencionarlo):",
+                "tipo": "texto_abierto",
+                "condicional_en": "j) otros"
+              }
+            ]
+          },
+          {
+            "id": "7.2",
+            "texto": "¿Qué actividades* realiza con teléfono inteligente (Smartphone)?",
+            "tipo": "seleccion_multiple",
+            "opciones": [
+              "1) Informarse",
+              "2) Divertirse",
+              "3) Para estar en contacto con la familia",
+              "4) Revisar pronóstico del tiempo",
+              "5) Revisar pronóstico de mareas",
+              "6) Asuntos relacionados al trabajo",
+              "7) otros"
+            ],
+            "sub_preguntas": [
+              {
+                "id": "7.2.1",
+                "texto": "Otros (mencionarlos):",
+                "tipo": "texto_abierto",
+                "condicional_en": "7) otros"
+              }
+            ]
+          },
+          {
+            "id": "7.3",
+            "texto": "¿Qué actividades* realiza con computadora (fija o portátil)?",
+            "tipo": "seleccion_multiple",
+            "opciones": [
+              "1) Informarse",
+              "2) Divertirse",
+              "3) Para estar en contacto con la familia",
+              "4) Revisar pronóstico del tiempo",
+              "5) Revisar pronóstico de mareas",
+              "6) Asuntos relacionados al trabajo",
+              "7) otros"
+            ],
+            "sub_preguntas": [
+              {
+                "id": "7.3.1",
+                "texto": "Otros (mencionarlos):",
+                "tipo": "texto_abierto",
+                "condicional_en": "7) otros"
+              }
+            ]
+          },
+          {
+            "id": "7.4",
+            "texto": "¿Dispone de conexión a internet?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "7.4.0",
+                "texto": "¿Por qué no?",
+                "tipo": "seleccion_multiple",
+                "condicional_en": "No",
+                "opciones": [
+                  "a) Falta de recursos económicos",
+                  "b) No les interesa o no lo necesitan",
+                  "c) No saben usarlo",
+                  "d) Desconocen su utilidad",
+                  "f) Equipo insuficiente o capacidad",
+                  "g) No hay servicio en su localidad (falta de infraestructura)",
+                  "h) Tienen acceso a internet en otros lugares",
+                  "i) Por razones relacionadas a la privacidad o seguridad",
+                  "j) otros"
+                ],
+                "sub_preguntas": [
+                  {
+                    "id": "7.4.0.1",
+                    "texto": "Otros (mencionarlo):",
+                    "tipo": "texto_abierto",
+                    "condicional_en": "j) otros"
+                  }
+                ]
+              },
+              {
+                "id": "7.4.1",
+                "texto": "Si su respuesta anterior fue Si, seleccione el tipo de conexión que dispone",
+                "tipo": "opcion_multiple",
+                "condicional_en": "Si",
+                "opciones": [
+                  "Conexión fija (modem WIFI)",
+                  "Conexión móvil (mediante dispositivos como celular, Tablet, etc.)",
+                  "Ambas (fija y móvil)",
+                  "No sabe"
+                ]
+              },
+              {
+                "id": "7.4.2",
+                "texto": "Si dispone de conexión fija, ¿cuál es el medio que dispone?",
+                "tipo": "opcion_multiple",
+                "condicional_en": "Si",
+                "condicion_secundaria": {
+                  "pregunta_id": "7.4.1",
+                  "valores": [
+                    "Conexión fija (modem WIFI)",
+                    "Ambas (fija y móvil)"
+                  ]
+                },
+                "opciones": [
+                  "Línea telefónica (ej. Telmex, otra)",
+                  "conexión satelital",
+                  "Internet por cable (ej. Mega cable, otra)",
+                  "Otro medio",
+                  "Señal abierta WIFI"
+                ]
+              },
+              {
+                "id": "7.4.3",
+                "texto": "Si dispone de conexión móvil ¿con qué equipo hacen la conexión?",
+                "tipo": "opcion_multiple",
+                "condicional_en": "Si",
+                "condicion_secundaria": {
+                  "pregunta_id": "7.4.1",
+                  "valores": [
+                    "Conexión móvil (mediante dispositivos como celular, Tablet, etc.)",
+                    "Ambas (fija y móvil)"
+                  ]
+                },
+                "opciones": [
+                  "Teléfono inteligente (Smartphone)",
+                  "Datos móviles (ej. Telcel)",
+                  "Tablet",
+                  "Otro"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "7.5",
+            "texto": "¿Qué actividades* realiza con el internet?:",
+            "tipo": "seleccion_multiple",
+            "opciones": [
+              "1) Informarse",
+              "2) Divertirse",
+              "3) Para estar en contacto con la familia",
+              "4) Revisar pronóstico del tiempo",
+              "5) Revisar pronóstico de mareas",
+              "6) Asuntos relacionados al trabajo",
+              "7) Venta de producto",
+              "8) Promoción del producto",
+              "9) Compra de producto",
+              "10) Contacto con proveedores (artes de pesca, servicios para mantenimiento, venta, renta de embarcación, etc.)",
+              "11) Otras (especifique)"
+            ],
+            "sub_preguntas": [
+              {
+                "id": "7.5.1",
+                "texto": "Otras (especifique):",
+                "tipo": "texto_abierto",
+                "condicional_en": "11) Otras (especifique)"
+              }
+            ]
+          },
+          {
+            "id": "7.6",
+            "texto": "Utiliza redes sociales?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "7.6.1",
+                "texto": "¿Cuáles y para qué?",
+                "tipo": "tabla",
+                "condicional_en": "Si",
+                "permite_multiples_filas": true,
+                "instrucciones": "Actividades: 1) Informarse; 2) Divertirse; 3) Para estar en contacto con la familia; 4) Revisar pronóstico del tiempo; 5) Revisar pronóstico de mareas; 6) Asuntos relacionados al trabajo; 7) Venta de producto; 8) Promoción del producto; 9) Compra de producto; 10) Contacto con proveedores; 11) Otras (especifique).",
+                "columnas": [
+                  {
+                    "id": "col_red_social",
+                    "texto": "Red Social",
+                    "tipo": "opcion_multiple",
+                    "opciones": [
+                      "Facebook",
+                      "WhatsApp",
+                      "Instagram",
+                      "Tik Tok",
+                      "Twitter (X)",
+                      "Otros"
+                    ]
+                  },
+                  {
+                    "id": "col_proposito",
+                    "texto": "Para qué (Actividades)",
+                    "tipo": "texto_abierto"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "7.7",
+            "texto": "¿Utiliza alguna herramienta para llevar un registro de los datos o actividades de la pesca (ej. Recursos, cantidad)?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "7.7.1",
+                "texto": "Si la respuesta anterior fue Sí, ¿qué herramientas utiliza?",
+                "tipo": "opcion_multiple",
+                "condicional_en": "Si",
+                "opciones": [
+                  "Bitácora en papel",
+                  "Teléfono",
+                  "Tablet",
+                  "Computadora",
+                  "Otro"
+                ],
+                "sub_preguntas": [
+                  {
+                    "id": "7.7.1.1",
+                    "texto": "Otro:",
+                    "tipo": "texto_abierto",
+                    "condicional_en": "Otro"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "7.8",
+            "texto": "¿Cuáles de las siguientes herramientas o tecnologías considera usted más necesarias para la pesca?",
+            "tipo": "seleccion_multiple",
+            "opciones": [
+              "1. Sistemas de posicionamiento GPS para la localización precisa de bancos de peces.",
+              "2. Equipos de sonar para la detección de peces en aguas profundas.",
+              "3. Dispositivos de monitoreo ambiental para controlar la calidad del agua",
+              "4. Aplicaciones móviles para la gestión de capturas y registros de pesca.",
+              "5. Equipos de comunicación satelital para mantener contacto fuera de la costa."
+            ]
+          },
+          {
+            "id": "7.9",
+            "texto": "¿Estaría interesado a participar en talleres de capacitación en uso de estas tecnologías?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "7.9.1",
+                "texto": "Si su respuesta anterior fue si ¿cuál sería el motivo?",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              },
+              {
+                "id": "7.9.2",
+                "texto": "Si su respuesta fue no ¿cuál sería el motivo?",
+                "tipo": "texto_abierto",
+                "condicional_en": "No"
+              }
+            ]
+          },
+          {
+            "id": "7.10",
+            "texto": "ldentifica organizaciones brindando capacitación o apoyos para el uso de herramientas tecnológicas en su comunidad?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "7.10.1",
+                "texto": "¿Cuáles?",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id_seccion": 8,
+        "titulo": "INCLUSIÓN FINANCIERA",
+        "preguntas": [
+          {
+            "id": "8.1",
+            "texto": "¿Usted lleva un presupuesto o un registro de sus ingresos y gastos?",
+            "tipo": "si_no"
+          },
+          {
+            "id": "8.2",
+            "texto": "¿Tiene cuenta en banco que utilice para para ahorrar dinero, realizar o recibir pagos, o recibir salarios o ayuda financiera?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "8.2.1",
+                "texto": "¿De qué tipo?",
+                "tipo": "seleccion_multiple",
+                "condicional_en": "Si",
+                "opciones": [
+                  "1) Cuenta o tarjeta de nómina (donde depositan su salario)",
+                  "2) Cuenta o tarjeta de pensión (donde depositan su pensión)",
+                  "3) Cuenta o tarjeta para recibir apoyos del gobierno",
+                  "4) Cuenta de ahorro",
+                  "5) Cuenta de cheques",
+                  "6) Depósito a plazo fijo (solo parar retirar en determinada fecha)",
+                  "7) Fondo de inversión (tiene acciones en casa de bolsa)",
+                  "8) Cuenta contratada por internet o aplicación (no bancaria) como Mercado Pago, Nu o Spin de Oxxo.",
+                  "9) Otro"
+                ],
+                "sub_preguntas": [
+                  {
+                    "id": "8.2.1.1",
+                    "texto": "Otro:",
+                    "tipo": "texto_abierto",
+                    "condicional_en": "9) Otro"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "8.3",
+            "texto": "¿Cuáles son las razones principales por las que no tiene una cuenta o tarjeta en una institución formal?",
+            "tipo": "seleccion_multiple",
+            "condicional_en": "8.2",
+            "condicion_valor": "No",
+            "opciones": [
+              "La sucursal le queda muy lejos o no hay",
+              "No la necesita",
+              "Los intereses son bajos o las comisiones son altas",
+              "No le alcanza, sus ingresos son insuficientes",
+              "No confía en instituciones financieras o le dan mal servicio",
+              "No sabe qué es o como usarla",
+              "Piden requisitos que no tiene",
+              "No quiere que le cobren impuestos",
+              "Prefiere otras formas de ahorrar (tanda, guardar en casa, etc.)",
+              "Otra"
+            ],
+            "sub_preguntas": [
+              {
+                "id": "8.3.1",
+                "texto": "Otra:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Otra"
+              }
+            ]
+          },
+          {
+            "id": "8.4",
+            "texto": "Usted tiene....",
+            "tipo": "escala_evaluacion",
+            "instrucciones": "Marque Si(1) o No(0) para cada item",
+            "escala": [
+              {
+                "valor": 1,
+                "etiqueta": "Si"
+              },
+              {
+                "valor": 0,
+                "etiqueta": "No"
+              }
+            ],
+            "items": [
+              {
+                "id": "8.4.1",
+                "texto": "1) Tarjeta de crédito departamental o de tienda de autoservicio?"
+              },
+              {
+                "id": "8.4.2",
+                "texto": "2) Tarjeta de crédito bancaria u otra institución financiera?"
+              },
+              {
+                "id": "8.4.3",
+                "texto": "3) Crédito de nómina"
+              },
+              {
+                "id": "8.4.4",
+                "texto": "4) Crédito personal"
+              },
+              {
+                "id": "8.4.5",
+                "texto": "5) Crédito automotriz"
+              },
+              {
+                "id": "8.4.6",
+                "texto": "6) Crédito de vivienda como Infonavit, Fovissste, banco u otra institución"
+              },
+              {
+                "id": "8.4.7",
+                "texto": "7) Crédito grupal, comunal o solidario (como el de Compartamos)"
+              },
+              {
+                "id": "8.4.8",
+                "texto": "8) Crédito contratado por internet o aplicación como Prestadero, Doopla o Yo TePresto"
+              }
+            ]
+          },
+          {
+            "id": "8.5",
+            "texto": "¿Sabe que es un buró de crédito?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "8.5.1",
+                "texto": "Si su respuesta fue si, ¿conoce su situación actual con el buró?",
+                "tipo": "si_no",
+                "condicional_en": "Si"
+              }
+            ]
+          },
+          {
+            "id": "8.6",
+            "texto": "¿Mantiene algún adeudo de créditos o financiamientos?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "8.6.1",
+                "texto": "Si su respuesta anterior fue si, ¿con que financiera?:",
+                "tipo": "seleccion_multiple",
+                "condicional_en": "Si",
+                "opciones": [
+                  "Banco",
+                  "Financiera independiente",
+                  "Crédito prestamista",
+                  "Proveedores",
+                  "Otros"
+                ],
+                "sub_preguntas": [
+                  {
+                    "id": "8.6.1.1",
+                    "texto": "Banco ¿Cuál o cuáles?",
+                    "tipo": "texto_abierto",
+                    "condicional_en": "Banco"
+                  },
+                  {
+                    "id": "8.6.1.2",
+                    "texto": "Financiera independiente ¿Cuál o cuáles?",
+                    "tipo": "texto_abierto",
+                    "condicional_en": "Financiera independiente"
+                  },
+                  {
+                    "id": "8.6.1.3",
+                    "texto": "Crédito prestamista ¿Cuál o cuáles?",
+                    "tipo": "texto_abierto",
+                    "condicional_en": "Crédito prestamista"
+                  },
+                  {
+                    "id": "8.6.1.4",
+                    "texto": "Proveedores ¿Cuál o cuáles?",
+                    "tipo": "texto_abierto",
+                    "condicional_en": "Proveedores"
+                  },
+                  {
+                    "id": "8.6.1.5",
+                    "texto": "Otros Especifique",
+                    "tipo": "texto_abierto",
+                    "condicional_en": "Otros"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "8.7",
+            "texto": "¿Ha recibido algún financiamiento bancario o apoyo de gobierno en algún momento?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "8.7.1",
+                "texto": "¿Cuál?",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              },
+              {
+                "id": "8.7.2",
+                "texto": "Si su respuesta fue no, ¿Ha sido su situación de adeudo lo que lo ha complicado acceder a un Préstamo?",
+                "tipo": "si_no",
+                "condicional_en": "No"
+              }
+            ]
+          },
+          {
+            "id": "8.8",
+            "texto": "¿Existe al menos una institución financiera formal (banco, cajero) en su localidad? ¿Cuál?",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "8.9",
+            "texto": "Usted usa alguna aplicación de su banco o financiera para hacer transacciones desde su celular (pagos, transferencias)?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "8.9.1",
+                "texto": "¿Cuál?",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              }
+            ]
+          },
+          {
+            "id": "8.10",
+            "texto": "¿Los bancos o instituciones financieras como todas las empresas pueden cerrar o quebrar, ¿sabe si en ese caso los ahorros están protegidos?",
+            "tipo": "si_no"
+          },
+          {
+            "id": "8.11",
+            "texto": "Usted ha tomado algún curso sobre sobre cómo ahorrar, ¿cómo hacer un presupuesto o sobre el uso responsable del crédito?",
+            "tipo": "si_no"
+          },
+          {
+            "id": "8.12",
+            "texto": "Estaría dispuesto a capacitarse en temas financieros",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "8.12.1",
+                "texto": "En que temas",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              }
+            ]
+          },
+          {
+            "id": "8.13",
+            "texto": "¿Tiene algún seguro de auto, de casa, de vida, de gastos médicos u otro (sin considerar el IMSS-Bienestar, Seguro Popular, INSABI (Instituto de Salud para el Bienestar) IMSS ISSSTE?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "8.13.1",
+                "texto": "¿Cuál es la razón principal por la que no dispone de algún seguro?",
+                "tipo": "opcion_multiple",
+                "condicional_en": "No",
+                "opciones": [
+                  "1) Tiene ahorrado para imprevistos",
+                  "2) No confía en las aseguradoras",
+                  "3) No se lo han ofrecido",
+                  "4) No tiene dinero, no tiene trabajo o sus ingresos son variables",
+                  "5) No sabe qué son, como funcionan o donde solicitarlos",
+                  "6) Son muy caros",
+                  "7) No los necesita o no le interesan",
+                  "8) Otro"
+                ],
+                "sub_preguntas": [
+                  {
+                    "id": "8.13.1.1",
+                    "texto": "Otro:",
+                    "tipo": "texto_abierto",
+                    "condicional_en": "8) Otro"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "8.14",
+            "texto": "Sobre la experiencia de su hogar con préstamos de dinero u otros artículos (en especie) en los últimos 12 meses [mes actual hasta año pasado del mismo mes]",
+            "tipo": "tabla_compleja",
+            "filas": [
+              "Prestamista formal (banco/institucion financiera)",
+              "Prestamista informal",
+              "Amigos o familiares",
+              "Microfinanzas o préstamos grupales",
+              "Grupos informales de crédito/ahorro (sociedades funerarias, cundinas, etc.)",
+              "Apoyo Gubernamental (Bienestar)",
+              "Organización no gubernamental (ONG)"
+            ],
+            "columnas": [
+              {
+                "id": "8.14.1",
+                "texto": "¿Usted o alguien en su hogar podría pedir un préstamo o pedir prestado en efectivo o en especie de [FUENTE]si así lo quisiera?",
+                "tipo": "opcion_multiple",
+                "opciones": [
+                  "1) si",
+                  "2) no",
+                  "3) Tal vez"
+                ]
+              },
+              {
+                "id": "8.14.2",
+                "texto": "¿Alguien en su hogar ha tomado algún préstamo o pedido prestado en efectivo o en especie de [FUENTE]?",
+                "tipo": "opcion_multiple",
+                "opciones": [
+                  "1) Sí, en efectivo",
+                  "2) Sí, en especie",
+                  "3) Sí, efectivo y especie",
+                  "4) No",
+                  "5) No lo sé"
+                ]
+              },
+              {
+                "id": "8.14.3",
+                "texto": "¿Quién toma la decisión de pedir prestado de [FUENTE] la mayor parte del tiempo? [puede seleccionar hasta 3]",
+                "tipo": "seleccion_multiple",
+                "opciones": [
+                  "1) Yo",
+                  "2) Cónyuge del hogar",
+                  "3) Pareja/cónyuge fuera del hogar",
+                  "4) otro miembro",
+                  "5) Ningún miembro",
+                  "6) No se tomó esa decisión"
+                ]
+              },
+              {
+                "id": "8.14.4",
+                "texto": "¿Quién hace la decisión sobre qué hacer con el dinero/artículo tomado de [FUENTE] la mayoría de ¿el tiempo? [puede seleccionar hasta 3]",
+                "tipo": "seleccion_multiple",
+                "opciones": [
+                  "1) Yo",
+                  "2) Cónyuge del hogar",
+                  "3) Pareja/cónyuge fuera del hogar",
+                  "4) otro miembro",
+                  "5) Ningún miembro",
+                  "6) No se tomó esa decisión"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
