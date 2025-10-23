@@ -32,33 +32,26 @@ import os
 # que tu script de Streamlit si usas la opción de archivo local.
 
 if not firebase_admin._apps:
+    # --- Inicialización Básica de Firebase ---
+    # Este método carga las credenciales directamente desde un archivo JSON.
+    # Es simple y efectivo para el desarrollo local.
+    FIREBASE_CREDS_PATH = os.path.join(os.path.dirname(__file__), "surver-fisherman-uabcs-firebase-adminsdk-fbsvc-90c8a5fac5.json")
+
     try:
-        # Intenta inicializar usando los secretos de Streamlit.
-        # Esto fallará si el archivo .streamlit/secrets.toml no está configurado.
-        if "firebase" in st.secrets:
-            # Convertimos los secretos a un diccionario de Python estándar.
-            creds_dict = dict(st.secrets["firebase"])
-            
-            # Es crucial asegurarse de que la clave privada tenga los saltos de línea correctos
-            # y no contenga espacios en blanco extra que puedan invalidar el formato PEM.
-            private_key_content = creds_dict["private_key"]
-            
-            # Reemplazamos cualquier '\n' escapado por un '\n' real (por si acaso)
-            private_key_content = private_key_content.replace('\\n', '\n')
-            # Eliminamos cualquier espacio en blanco al inicio o final de la clave
-            creds_dict["private_key"] = private_key_content.strip()
-            
-            cred = credentials.Certificate(creds_dict)
-            firebase_admin.initialize_app(cred, {
-                'projectId': creds_dict["project_id"],
-            })
-            st.success("Firebase inicializado desde Streamlit secrets.")
+        if os.path.exists(FIREBASE_CREDS_PATH):
+            cred = credentials.Certificate(FIREBASE_CREDS_PATH)
+            firebase_admin.initialize_app(cred)
+            st.success(f"Firebase inicializado desde archivo local: {os.path.basename(FIREBASE_CREDS_PATH)}")
         else:
-            st.error("Configuración de Firebase no encontrada en los secretos de Streamlit.")
-            st.info("Asegúrate de tener un archivo .streamlit/secrets.toml con la sección [firebase].")
+            st.error("Archivo de credenciales de Firebase no encontrado.")
+            st.info(
+                f"Asegúrate de que el archivo `{os.path.basename(FIREBASE_CREDS_PATH)}` "
+                "esté en el mismo directorio que el script `survey_app.py`."
+            )
             st.stop()
     except Exception as e:
         st.error(f"Error al inicializar Firebase: {e}")
+        st.info("Verifica que el contenido del archivo JSON de credenciales sea válido y no esté corrupto.")
         st.stop()
 
 db = firestore.client()
@@ -396,16 +389,24 @@ def login_page():
     username = st.text_input("Usuario")
     password = st.text_input("Contraseña", type="password")
 
-    # Autenticación básica codificada para fines de demostración.
-    # En un entorno de producción, integra con Firebase Authentication o un backend seguro.
     if st.button("Entrar"):
-        if username == "admin" and password == "admin123": # ¡CAMBIA ESTAS CREDENCIALES!
-            st.session_state.logged_in = True
-            st.session_state.username = username
-            st.success("¡Inicio de sesión exitoso!")
-            st.rerun() # Vuelve a ejecutar la aplicación para mostrar la encuesta
-        else:
-            st.error("Usuario o contraseña incorrectos.")
+        # --- Autenticación Segura usando Secretos de Streamlit ---
+        # Se valida contra las credenciales definidas en .streamlit/secrets.toml
+        try:
+            app_username = st.secrets["app_credentials"]["username"]
+            app_password = st.secrets["app_credentials"]["password"]
+
+            if username == app_username and password == app_password:
+                st.session_state.logged_in = True
+                st.session_state.username = username
+                st.success("¡Inicio de sesión exitoso!")
+                st.rerun()
+            else:
+                st.error("Usuario o contraseña incorrectos.")
+        except KeyError:
+            st.error("Error de configuración: Las credenciales de la aplicación no están definidas en los secretos.")
+            st.info("Asegúrate de añadir la sección [app_credentials] a tu archivo .streamlit/secrets.toml")
+
 
 # --- Aplicación Principal del Cuestionario ---
 def survey_app():
@@ -416,6 +417,9 @@ def survey_app():
         else:
             # El mensaje de error ya fue mostrado por load_survey_data
             return
+
+    survey = st.session_state.survey_data
+    sections = survey['secciones']
 
     survey = st.session_state.survey_data
     sections = survey['secciones']
