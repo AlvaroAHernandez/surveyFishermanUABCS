@@ -390,7 +390,8 @@ def login_page():
     password = st.text_input("Contraseña", type="password")
 
     if st.button("Entrar"):
-        
+        # --- Autenticación Segura usando Secretos de Streamlit ---
+        # Se valida contra las credenciales definidas en .streamlit/secrets.toml
         try:
             app_username = st.secrets["app_credentials"]["username"]
             app_password = st.secrets["app_credentials"]["password"]

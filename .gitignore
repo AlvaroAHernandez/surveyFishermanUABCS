@@ -1,0 +1,16 @@
+# Credenciales y secretos - ¡NUNCA SUBIR A GIT!
+.streamlit/secrets.toml
+surveyfisherman-firebase-adminsdk.json
+surver-fisherman-uabcs-firebase-adminsdk-fbsvc-90c8a5fac5.json
+
+# Archivos de cache de Python
+__pycache__/
+*.pyc
+
+# Archivos de entorno virtual (si usas uno)
+.venv/
+venv/
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
