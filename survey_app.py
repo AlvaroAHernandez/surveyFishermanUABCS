@@ -2,6 +2,7 @@ import streamlit as st
 import json
 import firebase_admin
 from firebase_admin import credentials, firestore
+from google.cloud.firestore import FieldFilter
 import datetime
 import os
 from pydantic import BaseModel, ValidationError
@@ -93,6 +94,8 @@ if 'survey_data' not in st.session_state:
     st.session_state.survey_data = None
 if 'survey_loaded' not in st.session_state:
     st.session_state.survey_loaded = False
+if 'current_response_id' not in st.session_state:
+    st.session_state.current_response_id = None # ID del documento en Firestore (para borradores)
 
 # --- Modelos Pydantic para Validación ---
 class SecondaryCondition(BaseModel):
@@ -117,6 +120,7 @@ class Question(BaseModel):
     id: str
     texto: str
     tipo: str
+    obligatoria: Optional[bool] = True
     instrucciones: Optional[str] = None
     opciones: Optional[List[str]] = None
     condicional_en: Optional[str] = None
@@ -208,10 +212,13 @@ def authenticate_user(username, password):
     y luego la colección 'users' en Firestore.
     Retorna (bool, role).
     """
+    # Eliminar espacios, pero respetar mayúsculas y minúsculas (Case Sensitive)
+    username = username.strip()
+
     # 1. Verificar Super Admin en st.secrets
     try:
         if "app_credentials" in st.secrets:
-            if username == st.secrets["app_credentials"]["username"] and \
+            if username == st.secrets["app_credentials"]["username"].strip() and \
                password == st.secrets["app_credentials"]["password"]:
                 return True, "admin"
     except Exception:
@@ -233,6 +240,7 @@ def authenticate_user(username, password):
 def create_user_in_db(new_username, new_password, role):
     """Crea un nuevo usuario en la colección 'users' de Firestore."""
     try:
+        new_username = new_username.strip()
         doc_ref = db.collection('users').document(new_username)
         doc_ref.set({
             "username": new_username,
@@ -257,11 +265,23 @@ def get_all_users():
 def delete_user_from_db(username):
     """Elimina un usuario de la base de datos."""
     try:
+        username = username.strip()
         db.collection('users').document(username).delete()
         return True
     except Exception as e:
         st.error(f"Error al eliminar usuario: {e}")
         return False
+
+def load_user_draft(username):
+    """Busca si el usuario tiene una encuesta en estado 'draft'."""
+    try:
+        # Buscar documentos del usuario que estén en borrador
+        docs = db.collection(COLLECTION_NAME).where(filter=FieldFilter("user_id", "==", username)).where(filter=FieldFilter("status", "==", "draft")).stream()
+        for doc in docs:
+            return doc.id, doc.to_dict() # Retornar el primero que encuentre
+    except Exception:
+        pass
+    return None, None
 
 def get_csv_download_link():
     """Genera un DataFrame de Pandas con todos los datos y lo convierte a CSV."""
@@ -273,7 +293,8 @@ def get_csv_download_link():
         row = {
             "id_registro": doc.id,
             "usuario": doc_data.get("user_id"),
-            "fecha_registro": doc_data.get("timestamp")
+            "fecha_registro": doc_data.get("timestamp"),
+            "estado": doc_data.get("status", "completed")
         }
         # Procesar respuestas
         responses = doc_data.get("responses", {})
@@ -296,11 +317,103 @@ def reset_survey_state():
     st.session_state.current_section_index = 0
     st.session_state.current_question_index = 0
     st.session_state.responses = {}
+    st.session_state.current_response_id = None
     # No es necesario recargar el JSON a menos que el archivo pueda cambiar
     # st.session_state.survey_loaded = False
 
+def auto_save_draft():
+    """Función auxiliar para autoguardar el borrador actual."""
+    doc_id = save_response_to_firestore(
+        st.session_state.responses, 
+        st.session_state.username, 
+        status="draft", 
+        doc_id=st.session_state.current_response_id
+    )
+    if doc_id:
+        st.session_state.current_response_id = doc_id
+        st.toast("Borrador autoguardado", icon="💾")
+
+def check_sub_question_condition(sub_q, parent_answer):
+    """Verifica si una sub-pregunta debe activarse basada en la respuesta del padre."""
+    # Verificar condición primaria ('condicional_en')
+    if 'condicional_en' in sub_q:
+        if parent_answer is None:
+            return False
+        elif isinstance(parent_answer, list):
+            if sub_q['condicional_en'] not in parent_answer:
+                return False
+        else:
+            if str(parent_answer) != sub_q['condicional_en']:
+                return False
+
+    # Verificar condición secundaria ('condicion_secundaria')
+    if 'condicion_secundaria' in sub_q:
+        secondary_q_id = sub_q['condicion_secundaria']['pregunta_id']
+        secondary_q_values = sub_q['condicion_secundaria']['valores']
+        secondary_answer = st.session_state.responses.get(secondary_q_id)
+
+        if secondary_answer is None:
+            return False
+        elif isinstance(secondary_answer, list):
+            if not any(val in secondary_answer for val in secondary_q_values):
+                return False
+        else:
+            if secondary_answer not in secondary_q_values:
+                return False
+    return True
+
+def validate_question_recursive(question, parent_id, errors):
+    """Valida recursivamente si las preguntas obligatorias tienen respuesta."""
+    q_id = question['id']
+    full_id = f"{parent_id}_{q_id}" if parent_id else q_id
+    
+    # 1. Validar la pregunta actual si es obligatoria
+    if question.get('obligatoria', True):
+        response = st.session_state.responses.get(full_id)
+        
+        # Criterios de "vacío"
+        is_empty = False
+        if response is None:
+            is_empty = True
+        elif isinstance(response, str) and response.strip() == "":
+            is_empty = True
+        elif isinstance(response, list) and len(response) == 0:
+            is_empty = True
+        
+        if is_empty:
+            errors.append(f"Pregunta {q_id}: {question['texto']}")
+
+    # 2. Validar sub-preguntas SOLO si están activas (condiciones cumplidas)
+    if 'sub_preguntas' in question:
+        parent_answer = st.session_state.responses.get(full_id)
+        for sub_q in question['sub_preguntas']:
+            if check_sub_question_condition(sub_q, parent_answer):
+                validate_question_recursive(sub_q, full_id, errors)
+
+def validate_current_section():
+    """Valida todas las preguntas de la sección actual."""
+    survey = st.session_state.survey_data
+    current_section = survey['secciones'][st.session_state.current_section_index]
+    errors = []
+    for question in current_section['preguntas']:
+        validate_question_recursive(question, None, errors)
+    return errors
+
+@st.dialog("⚠️ Atención: Sección Incompleta")
+def show_validation_warning(errors):
+    st.warning("Para avanzar, debe responder las siguientes preguntas obligatorias:")
+    for err in errors:
+        st.markdown(f"**• {err}**")
+
 def go_to_next_section():
     """Navega a la siguiente sección."""
+    # Validar antes de avanzar
+    errors = validate_current_section()
+    if errors:
+        show_validation_warning(errors)
+        return False # Indicar fallo
+
+    auto_save_draft() # Autoguardar al avanzar
     survey = st.session_state.survey_data
     sections = survey['secciones']
 
@@ -309,9 +422,11 @@ def go_to_next_section():
     else:
         # Fin del cuestionario
         st.session_state.current_section_index = -1
+    return True # Indicar éxito
 
 def go_to_previous_section():
     """Navega a la sección anterior."""
+    auto_save_draft() # Autoguardar al retroceder
     if st.session_state.current_section_index > 0:
         st.session_state.current_section_index -= 1
     else:
@@ -321,9 +436,10 @@ def go_to_previous_section():
 
 def _render_text_input(question, full_id, default_value):
     st.session_state.responses[full_id] = st.text_input(
-        label=f"Respuesta para {question['id']}",
+        label=f"Respuesta para {question['id']}" + (" *" if question.get('obligatoria', True) else ""),
         value=default_value if default_value is not None else "",
-        key=f"q_{full_id}"
+        key=f"q_{full_id}",
+        autocomplete="off"
     )
 
 def _render_date_input(question, full_id, default_value):
@@ -341,7 +457,7 @@ def _render_date_input(question, full_id, default_value):
         date_val = datetime.date.today()
 
     selected_date = st.date_input(
-        label=f"Respuesta para {question['id']}",
+        label=f"Respuesta para {question['id']}" + (" *" if question.get('obligatoria', True) else ""),
         value=date_val,
         key=f"q_{full_id}"
     )
@@ -349,7 +465,7 @@ def _render_date_input(question, full_id, default_value):
 
 def _render_number_input(question, full_id, default_value):
     st.session_state.responses[full_id] = st.number_input(
-        label=f"Respuesta para {question['id']}",
+        label=f"Respuesta para {question['id']}" + (" *" if question.get('obligatoria', True) else ""),
         value=default_value if default_value is not None else 0,
         key=f"q_{full_id}"
     )
@@ -359,7 +475,7 @@ def _render_radio_input(question, full_id, default_value):
     options = question.get('opciones', ["Si", "No"])
     index = options.index(default_value) if default_value in options else 0
     selected_option = st.radio(
-        label=f"Respuesta para {question['id']}",
+        label=f"Respuesta para {question['id']}" + (" *" if question.get('obligatoria', True) else ""),
         options=options,
         index=index,
         key=f"q_{full_id}"
@@ -369,7 +485,7 @@ def _render_radio_input(question, full_id, default_value):
 def _render_multiselect(question, full_id, default_value):
     options = question['opciones']
     selected_options = st.multiselect(
-        label=f"Seleccione una o varias opciones para {question['id']}",
+        label=f"Seleccione una o varias opciones para {question['id']}" + (" *" if question.get('obligatoria', True) else ""),
         options=options,
         default=default_value if default_value else [],
         key=f"q_{full_id}"
@@ -466,7 +582,8 @@ def _render_complex_table(question, full_id, default_value):
                 row_responses[col_id] = st.text_input(
                     label=f"{col['texto']} para {row_label}",
                     value=current_col_response if current_col_response is not None else "",
-                    key=col_full_id
+                    key=col_full_id,
+                    autocomplete="off"
                 )
         complex_table_responses[row_label] = row_responses
     st.session_state.responses[full_id] = complex_table_responses
@@ -520,6 +637,7 @@ def render_question(question, parent_id=None):
         for sub_q in question['sub_preguntas']:
             sub_q_full_id = f"{full_id}_{sub_q['id']}"
             display_sub_q = True # Asumir que se muestra a menos que las condiciones fallen
+            display_sub_q = check_sub_question_condition(sub_q, parent_answer)
 
             # Verificar condición primaria ('condicional_en')
             if 'condicional_en' in sub_q:
@@ -574,16 +692,41 @@ def login_page():
         st.title("Iniciar Sesión en la Encuesta")
 
     st.markdown("---")
-    username = st.text_input("Usuario")
-    password = st.text_input("Contraseña", type="password")
+    username = st.text_input("Usuario", autocomplete="username")
+    password = st.text_input("Contraseña", type="password", autocomplete="current-password")
 
     if st.button("Entrar"):
+        # Eliminar espacios, pero respetar mayúsculas y minúsculas
+        username = username.strip()
+        
         is_valid, role = authenticate_user(username, password)
         if is_valid:
+            # Verificar si hay borradores pendientes
+            draft_id, draft_data = load_user_draft(username)
+            
             st.session_state.logged_in = True
             st.session_state.username = username
             st.session_state.role = role
-            st.success(f"¡Bienvenido {username} ({role})!")
+            
+            if draft_id:
+                st.session_state.current_response_id = draft_id
+                # Cargar respuestas del borrador
+                if 'responses' in draft_data:
+                    # Deserializar fechas si es necesario (simple check)
+                    loaded_responses = draft_data['responses']
+                    # Nota: Las fechas vienen como string ISO desde Firestore, 
+                    # el renderizador _render_date_input ya maneja strings ISO, así que estamos bien.
+                    st.session_state.responses = loaded_responses
+                
+                # Cargar sección donde se quedó
+                if 'current_section' in draft_data:
+                    st.session_state.current_section_index = draft_data['current_section']
+                
+                st.toast("¡Borrador recuperado! Continuando donde lo dejaste.", icon="📂")
+                st.success(f"¡Bienvenido de nuevo {username}! Sesión recuperada.")
+            else:
+                st.success(f"¡Bienvenido {username} ({role})!")
+            
             st.rerun()
         else:
             st.error("Usuario o contraseña incorrectos.")
@@ -613,8 +756,8 @@ def survey_app():
         
         # 1. Gestión de Usuarios
         with st.sidebar.expander("Crear Usuario"):
-            new_user = st.text_input("Nuevo Usuario")
-            new_pass = st.text_input("Nueva Contraseña", type="password")
+            new_user = st.text_input("Nuevo Usuario", autocomplete="off")
+            new_pass = st.text_input("Nueva Contraseña", type="password", autocomplete="new-password")
             new_role = st.selectbox("Rol", ["user", "admin"])
             if st.button("Crear"):
                 if new_user and new_pass:
@@ -660,6 +803,7 @@ def survey_app():
         st.session_state.logged_in = False
         st.session_state.username = ""
         st.session_state.role = ""
+        st.session_state.current_response_id = None
         reset_survey_state() # Limpiar el estado de la encuesta al cerrar sesión
         st.rerun()
     st.sidebar.markdown("---")
@@ -672,7 +816,12 @@ def survey_app():
         st.json(st.session_state.responses)
 
         if st.button("Guardar y Finalizar"):
-            if save_response_to_firestore(st.session_state.responses, st.session_state.username):
+            if save_response_to_firestore(
+                st.session_state.responses, 
+                st.session_state.username, 
+                status="completed", 
+                doc_id=st.session_state.current_response_id
+            ):
                 st.balloons() # Pequeña celebración visual
                 reset_survey_state() # Reiniciar para una nueva encuesta
                 st.rerun()
@@ -715,8 +864,8 @@ def survey_app():
                 st.rerun()
         else:
             if st.button("Siguiente"):
-                go_to_next_section()
-                st.rerun()
+                if go_to_next_section():
+                    st.rerun()
 
 # --- Lógica principal de la aplicación ---
 if not st.session_state.logged_in:
