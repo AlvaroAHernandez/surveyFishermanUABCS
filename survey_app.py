@@ -6,6 +6,8 @@ import datetime
 import os
 from pydantic import BaseModel, ValidationError
 from typing import List, Optional, Union, Any
+import hashlib
+import pandas as pd
 
 # --- Firebase Initialization ---
 # IMPORTANTE: Para mayor seguridad, es altamente recomendable usar los secretos de Streamlit
@@ -79,6 +81,8 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'username' not in st.session_state:
     st.session_state.username = ""
+if 'role' not in st.session_state:
+    st.session_state.role = ""
 if 'current_section_index' not in st.session_state:
     st.session_state.current_section_index = 0
 if 'current_question_index' not in st.session_state:
@@ -174,10 +178,18 @@ def save_response_to_firestore(responses, username):
     """Guarda las respuestas recolectadas en Firestore."""
     try:
         doc_ref = db.collection(COLLECTION_NAME).document()
+        
+        # Serializar respuestas (convertir objetos date a string ISO)
+        serialized_responses = {
+            k: v.isoformat() if isinstance(v, (datetime.date, datetime.datetime)) else v 
+            for k, v in responses.items()
+        }
+        
         responses_to_save = {
             "user_id": username,
             "timestamp": firestore.SERVER_TIMESTAMP,
-            "responses": responses
+            "responses": responses,
+            "responses": serialized_responses
         }
         doc_ref.set(responses_to_save)
         st.success(f"¡Respuestas guardadas con éxito en Firestore! ID: {doc_ref.id}")
@@ -185,6 +197,99 @@ def save_response_to_firestore(responses, username):
     except Exception as e:
         st.error(f"Error al guardar respuestas en Firestore: {e}")
         return False
+
+def hash_password(password):
+    """Genera un hash SHA-256 para la contraseña."""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def authenticate_user(username, password):
+    """
+    Autentica al usuario verificando primero st.secrets (Super Admin)
+    y luego la colección 'users' en Firestore.
+    Retorna (bool, role).
+    """
+    # 1. Verificar Super Admin en st.secrets
+    try:
+        if "app_credentials" in st.secrets:
+            if username == st.secrets["app_credentials"]["username"] and \
+               password == st.secrets["app_credentials"]["password"]:
+                return True, "admin"
+    except Exception:
+        pass # Continuar si no hay secretos configurados o error
+
+    # 2. Verificar en Firestore
+    try:
+        doc_ref = db.collection('users').document(username)
+        doc = doc_ref.get()
+        if doc.exists:
+            user_data = doc.to_dict()
+            if user_data.get('password') == hash_password(password):
+                return True, user_data.get('role', 'user')
+    except Exception as e:
+        print(f"Error autenticando en Firestore: {e}")
+    
+    return False, None
+
+def create_user_in_db(new_username, new_password, role):
+    """Crea un nuevo usuario en la colección 'users' de Firestore."""
+    try:
+        doc_ref = db.collection('users').document(new_username)
+        doc_ref.set({
+            "username": new_username,
+            "password": hash_password(new_password),
+            "role": role,
+            "created_at": firestore.SERVER_TIMESTAMP
+        })
+        return True
+    except Exception as e:
+        st.error(f"Error al crear usuario: {e}")
+        return False
+
+def get_all_users():
+    """Obtiene la lista de todos los usuarios registrados en Firestore."""
+    try:
+        docs = db.collection('users').stream()
+        return [doc.to_dict() for doc in docs]
+    except Exception as e:
+        st.error(f"Error al obtener usuarios: {e}")
+        return []
+
+def delete_user_from_db(username):
+    """Elimina un usuario de la base de datos."""
+    try:
+        db.collection('users').document(username).delete()
+        return True
+    except Exception as e:
+        st.error(f"Error al eliminar usuario: {e}")
+        return False
+
+def get_csv_download_link():
+    """Genera un DataFrame de Pandas con todos los datos y lo convierte a CSV."""
+    docs = db.collection(COLLECTION_NAME).stream()
+    data = []
+    for doc in docs:
+        doc_data = doc.to_dict()
+        # Aplanar estructura básica
+        row = {
+            "id_registro": doc.id,
+            "usuario": doc_data.get("user_id"),
+            "fecha_registro": doc_data.get("timestamp")
+        }
+        # Procesar respuestas
+        responses = doc_data.get("responses", {})
+        for k, v in responses.items():
+            # Si es lista o dict (tablas/grids), convertir a JSON string para que quepa en una celda CSV
+            if isinstance(v, (list, dict)):
+                row[k] = json.dumps(v, ensure_ascii=False)
+            else:
+                row[k] = v
+        data.append(row)
+    
+    if not data:
+        return None
+        
+    df = pd.DataFrame(data)
+    return df.to_csv(index=False).encode('utf-8')
 
 def reset_survey_state():
     """Reinicia el estado del cuestionario para una nueva presentación."""
@@ -223,9 +328,14 @@ def _render_text_input(question, full_id, default_value):
 
 def _render_date_input(question, full_id, default_value):
     if default_value:
-        try:
-            date_val = datetime.datetime.strptime(default_value, "%Y-%m-%d").date()
-        except ValueError:
+        if isinstance(default_value, (datetime.date, datetime.datetime)):
+            date_val = default_value
+        elif isinstance(default_value, str):
+            try:
+                date_val = datetime.datetime.strptime(default_value, "%Y-%m-%d").date()
+            except ValueError:
+                date_val = datetime.date.today()
+        else:
             date_val = datetime.date.today()
     else:
         date_val = datetime.date.today()
@@ -235,7 +345,7 @@ def _render_date_input(question, full_id, default_value):
         value=date_val,
         key=f"q_{full_id}"
     )
-    st.session_state.responses[full_id] = selected_date.isoformat()
+    st.session_state.responses[full_id] = selected_date
 
 def _render_number_input(question, full_id, default_value):
     st.session_state.responses[full_id] = st.number_input(
@@ -468,22 +578,15 @@ def login_page():
     password = st.text_input("Contraseña", type="password")
 
     if st.button("Entrar"):
-        # --- Autenticación Segura usando Secretos de Streamlit ---
-        # Se valida contra las credenciales definidas en .streamlit/secrets.toml
-        try:
-            app_username = st.secrets["app_credentials"]["username"]
-            app_password = st.secrets["app_credentials"]["password"]
-
-            if username == app_username and password == app_password:
-                st.session_state.logged_in = True
-                st.session_state.username = username
-                st.success("¡Inicio de sesión exitoso!")
-                st.rerun()
-            else:
-                st.error("Usuario o contraseña incorrectos.")
-        except KeyError:
-            st.error("Error de configuración: Las credenciales de la aplicación no están definidas en los secretos.")
-            st.info("Asegúrate de añadir la sección [app_credentials] a tu archivo .streamlit/secrets.toml")
+        is_valid, role = authenticate_user(username, password)
+        if is_valid:
+            st.session_state.logged_in = True
+            st.session_state.username = username
+            st.session_state.role = role
+            st.success(f"¡Bienvenido {username} ({role})!")
+            st.rerun()
+        else:
+            st.error("Usuario o contraseña incorrectos.")
 
 
 # --- Aplicación Principal del Cuestionario ---
@@ -502,9 +605,61 @@ def survey_app():
     # Barra lateral para información del usuario y cerrar sesión
     st.sidebar.title("Navegación")
     st.sidebar.write(f"Usuario: **{st.session_state.username}**")
+    
+    # --- Panel de Administrador (Solo visible para admins) ---
+    if st.session_state.role == 'admin':
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("🛠️ Panel Admin")
+        
+        # 1. Gestión de Usuarios
+        with st.sidebar.expander("Crear Usuario"):
+            new_user = st.text_input("Nuevo Usuario")
+            new_pass = st.text_input("Nueva Contraseña", type="password")
+            new_role = st.selectbox("Rol", ["user", "admin"])
+            if st.button("Crear"):
+                if new_user and new_pass:
+                    if create_user_in_db(new_user, new_pass, new_role):
+                        st.success(f"Usuario {new_user} creado.")
+                    else:
+                        st.error("Error al crear usuario.")
+                else:
+                    st.warning("Complete todos los campos.")
+
+        # 2. Gestión de Usuarios Existentes (Ver / Borrar)
+        with st.sidebar.expander("Gestionar Usuarios"):
+            users = get_all_users()
+            if users:
+                st.caption("Lista de usuarios registrados:")
+                for u in users:
+                    u_name = u.get('username', 'Sin nombre')
+                    u_role = u.get('role', 'user')
+                    
+                    col1, col2 = st.columns([3, 1])
+                    col1.text(f"👤 {u_name} ({u_role})")
+                    if col2.button("🗑️", key=f"del_{u_name}", help="Eliminar usuario"):
+                        if delete_user_from_db(u_name):
+                            st.success(f"Eliminado: {u_name}")
+                            st.rerun()
+            else:
+                st.info("No hay usuarios registrados.")
+
+        # 3. Descarga de Datos
+        with st.sidebar.expander("Descargar Datos"):
+            csv_data = get_csv_download_link()
+            if csv_data:
+                st.download_button(
+                    label="📥 Descargar CSV",
+                    data=csv_data,
+                    file_name=f"encuesta_data_{datetime.date.today()}.csv",
+                    mime="text/csv"
+                )
+            else:
+                st.info("No hay datos para descargar.")
+
     if st.sidebar.button("Cerrar Sesión"):
         st.session_state.logged_in = False
         st.session_state.username = ""
+        st.session_state.role = ""
         reset_survey_state() # Limpiar el estado de la encuesta al cerrar sesión
         st.rerun()
     st.sidebar.markdown("---")
@@ -530,6 +685,11 @@ def survey_app():
 
     current_section = sections[st.session_state.current_section_index]
     questions = current_section['preguntas']
+
+    # --- Barra de Progreso ---
+    total_sections = len(sections)
+    progress_value = (st.session_state.current_section_index + 1) / total_sections
+    st.progress(progress_value, text=f"Progreso: Sección {st.session_state.current_section_index + 1} de {total_sections}")
 
     st.header(f"Sección {current_section['id_seccion']}: {current_section['titulo']}")
     
