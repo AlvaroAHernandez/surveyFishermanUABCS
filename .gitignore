@@ -13,3 +13,5 @@ venv/
 # Archivos de sistema operativo
 .DS_Store
 Thumbs.db
+survey-central-d4d22-firebase-adminsdk-fbsvc-bbd677430e.json
+secrets.toml

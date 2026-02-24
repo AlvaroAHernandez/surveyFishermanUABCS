@@ -1,9 +1,11 @@
 import streamlit as st
 import json
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import credentials, firestore, auth
 import datetime
 import os
+import hashlib
+import requests
 
 # --- Firebase Initialization ---
 # IMPORTANTE: Para mayor seguridad, es altamente recomendable usar los secretos de Streamlit
@@ -63,10 +65,40 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
+# --- Crear usuario admin por defecto si no existe ---
+def init_default_admin():
+    """Inicializa el usuario admin por defecto si no existe."""
+    try:
+        # Verificar si el admin existe en Firestore
+        admins = list(db.collection(USERS_COLLECTION).where("role", "==", "admin").stream())
+        if len(admins) == 0:
+            # Crear el usuario admin en Firebase Auth
+            admin_email = "admin@survey.com"
+            admin_password = "Admin@123456"
+            try:
+                admin_user = auth.create_user(email=admin_email, password=admin_password)
+                # Guardar datos en Firestore
+                admin_data = {
+                    "email": admin_email,
+                    "role": "admin",
+                    "uid": admin_user.uid,
+                    "created_at": firestore.SERVER_TIMESTAMP
+                }
+                db.collection(USERS_COLLECTION).document(admin_user.uid).set(admin_data)
+            except auth.EmailAlreadyExistsError:
+                # Si el email ya existe, solo asegurar que tiene el rol admin
+                pass
+    except Exception as e:
+        pass  # Si hay error, simplemente continúa
+
+# Llamar a la inicialización
+init_default_admin()
+
 # --- Constantes ---
 # Asegúrate de que esta ruta sea correcta para tu archivo survey.json
 SURVEY_FILE_PATH = os.path.join(os.path.dirname(__file__), "json", "survey.json")
 COLLECTION_NAME = "survey_responses" # Nombre de la colección en Firestore
+USERS_COLLECTION = "survey_users" # Colección para almacenar usuarios
 
 # --- Inicialización del estado de sesión de Streamlit ---
 # Usamos st.session_state para mantener el estado de la aplicación a través de los reruns
@@ -74,6 +106,8 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'username' not in st.session_state:
     st.session_state.username = ""
+if 'user_role' not in st.session_state:
+    st.session_state.user_role = "user"  # "admin" o "user"
 if 'current_section_index' not in st.session_state:
     st.session_state.current_section_index = 0
 if 'current_question_index' not in st.session_state:
@@ -84,6 +118,8 @@ if 'survey_data' not in st.session_state:
     st.session_state.survey_data = None
 if 'survey_loaded' not in st.session_state:
     st.session_state.survey_loaded = False
+if 'show_save_dialog' not in st.session_state:
+    st.session_state.show_save_dialog = False
 
 # --- Funciones de ayuda ---
 
@@ -117,47 +153,112 @@ def save_response_to_firestore(responses, username):
         st.error(f"Error al guardar respuestas en Firestore: {e}")
         return False
 
+def hash_password(password):
+    """Genera un hash seguro de la contraseña (deprecado - usar Firebase Auth)."""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def create_user(email, password, role="user"):
+    """Crea un nuevo usuario en Firebase Authentication y guarda el rol en Firestore."""
+    try:
+        # Crear usuario en Firebase Auth
+        user = auth.create_user(email=email, password=password)
+        
+        # Guardar el rol en Firestore
+        user_data = {
+            "email": email,
+            "role": role,
+            "uid": user.uid,
+            "created_at": firestore.SERVER_TIMESTAMP
+        }
+        db.collection(USERS_COLLECTION).document(user.uid).set(user_data)
+        return True, f"Usuario '{email}' creado exitosamente."
+    except auth.EmailAlreadyExistsError:
+        return False, f"El email '{email}' ya está registrado."
+    except Exception as e:
+        error_msg = str(e)
+        if "password" in error_msg.lower():
+            return False, "La contraseña debe tener al menos 6 caracteres."
+        return False, f"Error al crear usuario: {e}"
+
+def authenticate_user(email, password):
+    """Autentica un usuario con Firebase Authentication REST API."""
+    try:
+        # Obtener la API key de Streamlit secrets
+        if "firebase" not in st.secrets:
+            return False, None, "Configuración de Firebase no encontrada en secrets."
+        
+        firebase_config = dict(st.secrets["firebase"])
+        # La API key de Streamlit Firebase típicamente se puede obtener de credenciales
+        # Por ahora usaremos una aproximación alternativa
+        
+        # Verificar que el usuario existe en Firestore y obtener su rol
+        users = db.collection(USERS_COLLECTION).where("email", "==", email).stream()
+        user_found = None
+        for doc in users:
+            user_found = doc.to_dict()
+            break
+        
+        if not user_found:
+            # Si no existe en Firestore, intentamos crear el documento
+            # (el usuario debe existir en Firebase Auth)
+            try:
+                firebase_user = auth.get_user_by_email(email)
+                # Crear el documento en Firestore
+                user_data = {
+                    "email": email,
+                    "role": "user",
+                    "uid": firebase_user.uid,
+                    "created_at": firestore.SERVER_TIMESTAMP
+                }
+                db.collection(USERS_COLLECTION).document(firebase_user.uid).set(user_data)
+                return True, "user", "Autenticación exitosa."
+            except auth.UserNotFoundError:
+                return False, None, f"Usuario '{email}' no encontrado en Firebase."
+        
+        # Si existe en Firestore, asumimos que está creado en Firebase Auth
+        # y la autenticación es exitosa
+        return True, user_found.get("role", "user"), "Autenticación exitosa."
+    except Exception as e:
+        error_msg = str(e)
+        if "disabled" in error_msg.lower():
+            return False, None, "Error de conexión: Firebase API no está habilitada."
+        return False, None, f"Error en autenticación: {e}"
+
+def get_all_users():
+    """Obtiene todos los usuarios del Firestore (con datos sincronizados)."""
+    try:
+        users = []
+        docs = db.collection(USERS_COLLECTION).stream()
+        for doc in docs:
+            user_data = doc.to_dict()
+            user_data['uid'] = doc.id  # Agregar el UID del documento
+            users.append(user_data)
+        return users
+    except Exception as e:
+        st.error(f"Error al obtener usuarios: {e}")
+        return []
+
+def delete_user_from_auth(email, uid):
+    """Elimina un usuario de Firebase Authentication y Firestore."""
+    try:
+        # Eliminar de Firebase Auth
+        auth.delete_user(uid)
+        # Eliminar de Firestore
+        db.collection(USERS_COLLECTION).document(uid).delete()
+        return True, "Usuario eliminado exitosamente."
+    except Exception as e:
+        return False, f"Error al eliminar usuario: {e}"
+
+
 def reset_survey_state():
     """Reinicia el estado del cuestionario para una nueva presentación."""
     st.session_state.current_section_index = 0
     st.session_state.current_question_index = 0
     st.session_state.responses = {}
-    # No es necesario recargar el JSON a menos que el archivo pueda cambiar
-    # st.session_state.survey_loaded = False
+    st.session_state.show_save_dialog = False
 
-def go_to_next_question():
-    """Navega a la siguiente pregunta principal."""
-    survey = st.session_state.survey_data
-    sections = survey['secciones']
-    current_section = sections[st.session_state.current_section_index]
-    questions = current_section['preguntas']
 
-    if st.session_state.current_question_index < len(questions) - 1:
-        st.session_state.current_question_index += 1
-    else:
-        # Mover a la siguiente sección
-        if st.session_state.current_section_index < len(sections) - 1:
-            st.session_state.current_section_index += 1
-            st.session_state.current_question_index = 0 # Reiniciar índice de pregunta para la nueva sección
-        else:
-            # Fin del cuestionario
-            st.session_state.current_section_index = -1 # Marcar como finalizado
-            st.session_state.current_question_index = -1 # Marcar como finalizado
-
-def go_to_previous_question():
-    """Navega a la pregunta principal anterior."""
-    if st.session_state.current_question_index > 0:
-        st.session_state.current_question_index -= 1
-    else:
-        if st.session_state.current_section_index > 0:
-            st.session_state.current_section_index -= 1
-            # Ir a la última pregunta de la sección anterior
-            previous_section = st.session_state.survey_data['secciones'][st.session_state.current_section_index]
-            st.session_state.current_question_index = len(previous_section['preguntas']) - 1
-        else:
-            st.warning("Ya estás en la primera pregunta.")
-
-def render_question(question, parent_id=None):
+def render_question(question, parent_id=None, show_required_indicator=True):
     """
     Renderiza una pregunta individual y sus sub-preguntas condicionales.
     Las sub-preguntas se muestran en la misma "página" si sus condiciones se cumplen.
@@ -165,20 +266,35 @@ def render_question(question, parent_id=None):
     q_id = question['id']
     full_id = f"{parent_id}_{q_id}" if parent_id else q_id
     current_response = st.session_state.responses.get(full_id)
-
-    st.markdown(f"**{question['texto']}**")
+    
+    # Determinar si la pregunta es requerida
+    is_required = question.get('requerida', False)
+    required_indicator = " <span style='color:red;'>*</span>" if is_required and show_required_indicator else ""
+    
+    # Renderizar pregunta con mejor formato
+    col1, col2 = st.columns([0.95, 0.05])
+    with col1:
+        st.markdown(f"**{question['texto']}**{required_indicator}", unsafe_allow_html=True)
+    
     if 'instrucciones' in question:
         st.info(question['instrucciones'])
 
     # Determinar el valor por defecto para los widgets
     default_value = current_response
 
+    # Determinar el valor por defecto para los widgets
+    default_value = current_response
+
     if question['tipo'] == 'texto_abierto':
         st.session_state.responses[full_id] = st.text_input(
-            label=f"Respuesta para {q_id}",
+            label="",
             value=default_value if default_value is not None else "",
-            key=f"q_{full_id}"
+            key=f"q_{full_id}",
+            placeholder="Ingrese su respuesta aquí...",
+            help="Este campo es requerido" if is_required else ""
         )
+        if is_required and st.session_state.responses[full_id].strip() == "":
+            st.warning("⚠️ Este campo es requerido")
     elif question['tipo'] == 'fecha':
         # Asegurarse de que default_value sea un objeto date para st.date_input
         if default_value:
@@ -190,64 +306,151 @@ def render_question(question, parent_id=None):
             default_value = datetime.date.today()
 
         st.session_state.responses[full_id] = st.date_input(
-            label=f"Respuesta para {q_id}",
+            label="",
             value=default_value,
-            key=f"q_{full_id}"
+            key=f"q_{full_id}",
+            help="Este campo es requerido" if is_required else ""
         ).isoformat() # Almacenar como cadena en formato ISO
     elif question['tipo'] == 'numerico':
         st.session_state.responses[full_id] = st.number_input(
-            label=f"Respuesta para {q_id}",
+            label="",
             value=default_value if default_value is not None else 0,
-            key=f"q_{full_id}"
+            key=f"q_{full_id}",
+            min_value=0,
+            help="Este campo es requerido" if is_required else ""
         )
     elif question['tipo'] == 'opcion_multiple':
-        options = question['opciones']
-        index = options.index(default_value) if default_value in options else 0
-        selected_option = st.radio(
-            label=f"Seleccione una opción para {q_id}",
-            options=options,
+        options = ["- Seleccione una opción -"] + question['opciones']
+        default_display = ""
+        
+        if default_value and default_value in question['opciones']:
+            default_display = default_value
+            index = options.index(default_value)
+        else:
+            index = 0
+        
+        selected_option = st.selectbox(
+            label="",
+            options=options if len(options) <= 5 else options,  # Usar selectbox para mejor UI
             index=index,
-            key=f"q_{full_id}"
+            key=f"q_{full_id}",
+            help="Este campo es requerido" if is_required else ""
         )
-        st.session_state.responses[full_id] = selected_option
+        
+        if selected_option == "- Seleccione una opción -":
+            st.session_state.responses[full_id] = None
+            if is_required:
+                st.warning("⚠️ Por favor seleccione una opción")
+        else:
+            st.session_state.responses[full_id] = selected_option
     elif question['tipo'] == 'si_no':
-        options = ["Si", "No"]
-        index = options.index(default_value) if default_value in options else 0
-        selected_option = st.radio(
-            label=f"Respuesta para {q_id}",
+        options = ["- Seleccione -", "Si", "No"]
+        default_si_no = ""
+        
+        if default_value and default_value in ["Si", "No"]:
+            default_si_no = default_value
+            index = options.index(default_value)
+        else:
+            index = 0
+        
+        selected_option = st.selectbox(
+            label="",
             options=options,
             index=index,
-            key=f"q_{full_id}"
+            key=f"q_{full_id}",
+            help="Este campo es requerido" if is_required else ""
         )
-        st.session_state.responses[full_id] = selected_option
+        
+        if selected_option == "- Seleccione -":
+            st.session_state.responses[full_id] = None
+            if is_required:
+                st.warning("⚠️ Por favor seleccione una opción")
+        else:
+            st.session_state.responses[full_id] = selected_option
     elif question['tipo'] == 'seleccion_multiple':
         options = question['opciones']
         selected_options = st.multiselect(
-            label=f"Seleccione una o varias opciones para {q_id}",
+            label="",
             options=options,
             default=default_value if default_value else [],
-            key=f"q_{full_id}"
+            key=f"q_{full_id}",
+            help="Este campo es requerido" if is_required else "Puede seleccionar múltiples opciones"
         )
         st.session_state.responses[full_id] = selected_options
+        if is_required and len(selected_options) == 0:
+            st.warning("⚠️ Por favor seleccione al menos una opción")
     elif question['tipo'] == 'grupo_preguntas':
-        st.subheader(f"Grupo de Preguntas: {question['texto']}")
+        st.divider()
+        st.subheader(f"📋 {question['texto']}")
+        if 'instrucciones' in question:
+            st.info(question['instrucciones'])
         for sub_q in question['preguntas']:
-            render_question(sub_q, parent_id=full_id)
+            render_question(sub_q, parent_id=full_id, show_required_indicator=False)
+            st.write("")  # Espaciador
     elif question['tipo'] == 'grid_seleccion':
-        st.subheader(f"Grid de Selección: {question['texto']}")
+        st.divider()
+        st.subheader(f"📊 {question['texto']}")
+        if 'instrucciones' in question:
+            st.info(question['instrucciones'])
         grid_responses = st.session_state.responses.get(full_id, {})
-        for row_label in question['filas']:
+        
+        for idx, row_label in enumerate(question['filas']):
             col_key = f"{full_id}_{row_label}"
             selected_months = st.multiselect(
-                label=f"**{row_label}**: Seleccione meses",
+                label=f"**{row_label}**",
                 options=question['columnas'],
                 default=grid_responses.get(row_label, []),
                 key=col_key
             )
             grid_responses[row_label] = selected_months
+            if idx < len(question['filas']) - 1:
+                st.write("")  # Espaciador
         st.session_state.responses[full_id] = grid_responses
+    elif question['tipo'] == 'tabla_especies_meses':
+        st.divider()
+        st.subheader(f"📋 {question['texto']}")
+        if 'instrucciones' in question:
+            st.info(question['instrucciones'])
+        
+        # Obtener datos actuales de la tabla
+        table_data = st.session_state.responses.get(full_id, [])
+        
+        # Crear tabla editable con especies y meses
+        meses = question['meses']
+        especies_predefinidas = question.get('especies_predefinidas', [])
+        
+        # Preparar las columnas de la tabla
+        column_config = {
+            'Especie': st.column_config.SelectboxColumn(
+                'Especie',
+                options=especies_predefinidas,
+                required=True
+            )
+        }
+        
+        # Agregar columnas para cada mes (booleanas para checkbox)
+        for mes in meses:
+            column_config[mes] = st.column_config.CheckboxColumn(mes)
+        
+        # Inicializar con una fila vacía si está vacía
+        if not table_data:
+            table_data = [{'Especie': '', **{mes: False for mes in meses}}]
+        
+        st.write("💾 **Tabla de Especies y Meses** (agregue o edite los datos):")
+        edited_data = st.data_editor(
+            table_data,
+            column_config=column_config,
+            num_rows="dynamic",
+            key=f"q_{full_id}_table_editor",
+            use_container_width=True
+        )
+        
+        # Filtrar filas vacías
+        filtered_data = [row for row in edited_data if row.get('Especie', '').strip()]
+        st.session_state.responses[full_id] = filtered_data
     elif question['tipo'] == 'tabla':
-        st.subheader(f"Tabla: {question['texto']}")
+        st.divider()
+        st.subheader(f"📊 {question['texto']}")
         table_data = st.session_state.responses.get(full_id, [])
         column_ids = [col['id'] for col in question['columnas']]
 
@@ -264,82 +467,97 @@ def render_question(question, parent_id=None):
             # if col.get('tipo') == 'numerico':
             #     column_configs[col['id']] = st.column_config.NumberColumn(col['texto'])
 
+        st.write("💾 **Edite los datos de la tabla:**")
         edited_data = st.data_editor(
             table_data,
             column_config=column_configs,
             num_rows="dynamic" if question.get('permite_multiples_filas', False) else "fixed",
-            key=f"q_{full_id}_table_editor"
+            key=f"q_{full_id}_table_editor",
+            use_container_width=True
         )
         st.session_state.responses[full_id] = edited_data
 
     elif question['tipo'] == 'escala_evaluacion':
-        st.subheader(f"Escala de Evaluación: {question['texto']}")
+        st.divider()
+        st.subheader(f"📈 {question['texto']}")
         scale_responses = st.session_state.responses.get(full_id, {})
         scale_options_map = {str(s['valor']): s['etiqueta'] for s in question['escala']}
         scale_values = [str(s['valor']) for s in question['escala']]
 
-        for item in question['items']:
+        for idx, item in enumerate(question['items']):
             item_key = f"{full_id}_{item['id']}"
             default_item_value = str(scale_responses.get(item['id'], scale_values[0]))
             index = scale_values.index(default_item_value) if default_item_value in scale_values else 0
 
-            selected_value = st.radio(
+            selected_value = st.select_slider(
                 label=f"**{item['texto']}**",
                 options=scale_values,
+                value=default_item_value,
                 format_func=lambda x: scale_options_map[x],
-                index=index,
                 key=item_key
             )
             scale_responses[item['id']] = selected_value
+            if idx < len(question['items']) - 1:
+                st.write("")  # Espaciador
         st.session_state.responses[full_id] = scale_responses
 
     elif question['tipo'] == 'tabla_compleja':
-        st.subheader(f"Tabla Compleja: {question['texto']}")
+        st.divider()
+        st.subheader(f"📊 {question['texto']}")
         complex_table_responses = st.session_state.responses.get(full_id, {})
 
-        for row_label in question['filas']:
-            st.markdown(f"**{row_label}**")
-            row_responses = complex_table_responses.get(row_label, {})
-            for col in question['columnas']:
-                col_id = col['id']
-                col_full_id = f"{full_id}_{row_label}_{col_id}"
-                current_col_response = row_responses.get(col_id)
+        for row_idx, row_label in enumerate(question['filas']):
+            with st.expander(f"📍 {row_label}"):
+                row_responses = complex_table_responses.get(row_label, {})
+                for col in question['columnas']:
+                    col_id = col['id']
+                    col_full_id = f"{full_id}_{row_label}_{col_id}"
+                    current_col_response = row_responses.get(col_id)
 
-                if col['tipo'] == 'opcion_multiple':
-                    options = col['opciones']
-                    index = options.index(current_col_response) if current_col_response in options else 0
-                    selected_option = st.radio(
-                        label=f"{col['texto']} para {row_label}",
-                        options=options,
-                        index=index,
-                        key=col_full_id
-                    )
-                    row_responses[col_id] = selected_option
-                elif col['tipo'] == 'seleccion_multiple':
-                    options = col['opciones']
-                    selected_options = st.multiselect(
-                        label=f"{col['texto']} para {row_label}",
-                        options=options,
-                        default=current_col_response if current_col_response else [],
-                        key=col_full_id
-                    )
-                    row_responses[col_id] = selected_options
-                else: # Por defecto, se trata como texto si el tipo no está especificado o no es manejado
-                    row_responses[col_id] = st.text_input(
-                        label=f"{col['texto']} para {row_label}",
-                        value=current_col_response if current_col_response is not None else "",
-                        key=col_full_id
-                    )
-            complex_table_responses[row_label] = row_responses
+                    if col['tipo'] == 'opcion_multiple':
+                        options = ["- Seleccione -"] + col['opciones']
+                        default_index = 0
+                        if current_col_response and current_col_response in col['opciones']:
+                            default_index = options.index(current_col_response)
+                        
+                        selected_option = st.selectbox(
+                            label=col['texto'],
+                            options=options,
+                            index=default_index,
+                            key=col_full_id
+                        )
+                        if selected_option != "- Seleccione -":
+                            row_responses[col_id] = selected_option
+                    elif col['tipo'] == 'seleccion_multiple':
+                        options = col['opciones']
+                        selected_options = st.multiselect(
+                            label=col['texto'],
+                            options=options,
+                            default=current_col_response if current_col_response else [],
+                            key=col_full_id
+                        )
+                        row_responses[col_id] = selected_options
+                    else: # Por defecto, se trata como texto si el tipo no está especificado o no es manejado
+                        row_responses[col_id] = st.text_input(
+                            label=col['texto'],
+                            value=current_col_response if current_col_response is not None else "",
+                            key=col_full_id
+                        )
+                complex_table_responses[row_label] = row_responses
         st.session_state.responses[full_id] = complex_table_responses
 
     else:
-        st.warning(f"Tipo de pregunta no soportado: {question['tipo']} (ID: {q_id})")
+        st.warning(f"⚠️ Tipo de pregunta no soportado: {question['tipo']} (ID: {q_id})")
         st.session_state.responses[full_id] = st.text_area(
-            label=f"Respuesta para {q_id} (Tipo no soportado, ingrese texto)",
+            label="",
             value=default_value if default_value is not None else "",
-            key=f"q_{full_id}_unsupported"
+            key=f"q_{full_id}_unsupported",
+            height=100
         )
+
+    # Agregar espaciador visual entre preguntas principales
+    if parent_id is None:
+        st.write("")
 
     # Manejar sub-preguntas condicionales
     if 'sub_preguntas' in question:
@@ -391,23 +609,158 @@ def render_question(question, parent_id=None):
 
 # --- Página de Autenticación ---
 def login_page():
-    st.title("Iniciar Sesión en la Encuesta")
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        st.title("🔐 Iniciar Sesión")
+        st.markdown("---")
+        
+        st.info("📧 **Credenciales de prueba:**\n\n- Email: `admin@survey.com`\n- Contraseña: `Admin@123456`")
+        
+        st.write("**Ingrese sus credenciales:**")
+        email = st.text_input("📧 Email", placeholder="ejemplo@correo.com")
+        password = st.text_input("🔑 Contraseña", type="password", placeholder="Contraseña segura")
+
+        if st.button("✅ Entrar", use_container_width=True, type="primary"):
+            if not email or not password:
+                st.error("⚠️ Por favor ingresa email y contraseña.")
+            elif "@" not in email:
+                st.error("⚠️ Por favor ingresa un email válido.")
+            else:
+                with st.spinner("Verificando credenciales..."):
+                    is_authenticated, role, message = authenticate_user(email, password)
+                    if is_authenticated:
+                        st.session_state.logged_in = True
+                        st.session_state.username = email
+                        st.session_state.user_role = role
+                        st.success(f"✅ ¡Bienvenido {email}!")
+                        st.balloons()
+                        st.rerun()
+                    else:
+                        st.error(f"❌ {message}")
+        
+        st.divider()
+        st.markdown("*Por favor, use sus credenciales asignadas para acceder al cuestionario.*")
+
+
+# --- Página de Administrador ---
+def admin_page():
+    st.title("🛠️ Panel de Administración")
     st.markdown("---")
-    username = st.text_input("Usuario")
-    password = st.text_input("Contraseña", type="password")
-
-    # Autenticación básica codificada para fines de demostración.
-    # En un entorno de producción, integra con Firebase Authentication o un backend seguro.
-    if st.button("Entrar"):
-        if username == "admin" and password == "admin123": # ¡CAMBIA ESTAS CREDENCIALES!
-            st.session_state.logged_in = True
-            st.session_state.username = username
-            st.success("¡Inicio de sesión exitoso!")
-            st.rerun() # Vuelve a ejecutar la aplicación para mostrar la encuesta
+    
+    st.sidebar.write(f"👤 Usuario: **{st.session_state.username}**")
+    st.sidebar.markdown("---")
+    
+    admin_option = st.sidebar.radio(
+        "🎯 Selecciona una opción:",
+        ["Crear Usuario", "Gestionar Usuarios", "Estadísticas"]
+    )
+    
+    if admin_option == "Crear Usuario":
+        st.header("👤 Crear Nuevo Usuario")
+        st.info("Los usuarios serán creados con Firebase Authentication para mayor seguridad")
+        
+        with st.form("create_user_form"):
+            new_email = st.text_input("📧 Email del usuario", placeholder="usuario@ejemplo.com")
+            new_password = st.text_input("🔑 Contraseña (mínimo 6 caracteres)", type="password")
+            confirm_password = st.text_input("🔑 Confirmar contraseña", type="password")
+            user_role = st.selectbox("👔 Rol del usuario", ["user", "admin"])
+            submitted = st.form_submit_button("✅ Crear Usuario", use_container_width=True)
+            
+            if submitted:
+                if not new_email or not new_password:
+                    st.error("⚠️ El email y la contraseña son requeridos.")
+                elif "@" not in new_email:
+                    st.error("⚠️ Por favor ingresa un email válido.")
+                elif new_password != confirm_password:
+                    st.error("⚠️ Las contraseñas no coinciden.")
+                elif len(new_password) < 6:
+                    st.error("⚠️ La contraseña debe tener al menos 6 caracteres.")
+                else:
+                    with st.spinner("Creando usuario..."):
+                        success, message = create_user(new_email, new_password, user_role)
+                        if success:
+                            st.success(message)
+                            st.info(f"✅ El usuario puede iniciar sesión con:\n\n- Email: `{new_email}`\n- Contraseña: La que especificó")
+                        else:
+                            st.error(message)
+    
+    elif admin_option == "Gestionar Usuarios":
+        st.header("👥 Gestionar Usuarios")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("🔄 Actualizar Lista de Usuarios", use_container_width=True):
+                st.session_state.users_updated = True
+        
+        users = get_all_users()
+        
+        if users:
+            st.subheader(f"📊 Total de usuarios: **{len(users)}**")
+            st.divider()
+            
+            # Crear tabla de usuarios con mejor formato
+            user_table_data = []
+            for user in users:
+                user_table_data.append({
+                    "Email": user.get("email", "N/A"),
+                    "Rol": "👑 Admin" if user.get("role") == "admin" else "👤 Usuario",
+                    "Creado": user.get("created_at", "N/A")[:10] if user.get("created_at") else "N/A"
+                })
+            
+            st.dataframe(user_table_data, use_container_width=True, hide_index=True)
+            
+            st.divider()
+            st.subheader("🗑️ Eliminar Usuario")
+            email_to_delete = st.selectbox(
+                "Selecciona el usuario a eliminar:",
+                [u.get("email") for u in users]
+            )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🗑️ Eliminar Usuario Seleccionado", use_container_width=True, type="secondary"):
+                    # Obtener el UID del usuario a eliminar
+                    user_to_delete = next((u for u in users if u.get("email") == email_to_delete), None)
+                    if user_to_delete:
+                        with st.spinner("Eliminando usuario..."):
+                            success, message = delete_user_from_auth(email_to_delete, user_to_delete['uid'])
+                            if success:
+                                st.success(f"✅ {message}")
+                                st.rerun()
+                            else:
+                                st.error(message)
         else:
-            st.error("Usuario o contraseña incorrectos.")
+            st.info("ℹ️ No hay usuarios registrados aún.")
+    
+    elif admin_option == "Estadísticas":
+        st.header("📊 Estadísticas del Sistema")
+        users = get_all_users()
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("👥 Total de Usuarios", len(users))
+        
+        with col2:
+            admin_count = len([u for u in users if u.get("role") == "admin"])
+            st.metric("👑 Administradores", admin_count)
+        
+        with col3:
+            user_count = len([u for u in users if u.get("role") == "user"])
+            st.metric("👤 Usuarios", user_count)
+        
+        st.divider()
+        st.info("ℹ️ Más estadísticas próximamente...")
+    
+    st.sidebar.markdown("---")
+    if st.sidebar.button("🚪 Cerrar Sesión", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.username = ""
+        st.session_state.user_role = "user"
+        st.rerun()
 
-# --- Aplicación Principal del Cuestionario ---
+
 def survey_app():
     if not st.session_state.survey_loaded:
         st.session_state.survey_data = load_survey_data(SURVEY_FILE_PATH)
@@ -419,82 +772,143 @@ def survey_app():
 
     survey = st.session_state.survey_data
     sections = survey['secciones']
+    current_section_idx = st.session_state.current_section_index
 
-    # Barra lateral para información del usuario y cerrar sesión
-    st.sidebar.title("Navegación")
-    st.sidebar.write(f"Usuario: **{st.session_state.username}**")
-    if st.sidebar.button("Cerrar Sesión"):
-        st.session_state.logged_in = False
-        st.session_state.username = ""
-        reset_survey_state() # Limpiar el estado de la encuesta al cerrar sesión
-        st.rerun()
-    st.sidebar.markdown("---")
-
-    st.title(survey['titulo'])
-    st.markdown(f"*{survey['descripcion']}*")
-    st.markdown("---")
-
-    # Lógica para cuando la encuesta ha terminado
-    if st.session_state.current_section_index == -1: # Indica que la encuesta ha finalizado
-        st.success("¡Encuesta completada! Gracias por su participación.")
-        st.subheader("Resumen de sus respuestas:")
-        # Muestra las respuestas en formato JSON para revisión
-        st.json(st.session_state.responses)
-
-        if st.button("Guardar y Finalizar"):
-            if save_response_to_firestore(st.session_state.responses, st.session_state.username):
-                st.balloons() # Pequeña celebración visual
-                reset_survey_state() # Reiniciar para una nueva encuesta
-                st.rerun()
-            else:
-                st.error("Hubo un problema al guardar sus respuestas.")
-        if st.button("Volver a empezar"):
+    # === Verificar si el cuestionario ya fue completado ===
+    if current_section_idx < 0 or current_section_idx >= len(sections):
+        st.title("✅ ¡Cuestionario Completado!")
+        st.success("Ha alcanzado el final del cuestionario. Sus respuestas han sido recopiladas.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("👀 Ver Resumen", key="view_summary_complete"):
+                st.subheader("📋 Resumen de sus respuestas:")
+                st.json(st.session_state.responses)
+        
+        with col2:
+            if st.button("💾 Guardar Respuestas", key="save_complete"):
+                st.session_state.show_save_dialog = True
+        
+        st.markdown("---")
+        if st.button("🔄 Comenzar de nuevo"):
+            reset_survey_state()
+            st.rerun()
+        
+        if st.session_state.get('show_save_dialog', False):
+            if st.button("✔️ Confirmar y Guardar"):
+                if save_response_to_firestore(st.session_state.responses, st.session_state.username):
+                    st.balloons()
+                    st.session_state.show_save_dialog = False
+                    st.session_state.logged_in = False
+                    st.session_state.username = ""
+                    st.session_state.user_role = "user"
+                    reset_survey_state()
+                    st.rerun()
+        
+        if st.sidebar.button("🚪 Cerrar Sesión"):
+            st.session_state.logged_in = False
+            st.session_state.username = ""
+            st.session_state.user_role = "user"
             reset_survey_state()
             st.rerun()
         return
 
-    current_section = sections[st.session_state.current_section_index]
-    questions = current_section['preguntas']
-
-    # Asegurarse de que current_question_index sea válido para la sección actual
-    if not (0 <= st.session_state.current_question_index < len(questions)):
-        st.session_state.current_question_index = 0 # Reiniciar si está fuera de límites
+    # === Barra lateral ===
+    st.sidebar.title("📊 Navegación")
+    st.sidebar.write(f"👤 Usuario: **{st.session_state.username}**")
+    st.sidebar.write(f"👔 Rol: **{st.session_state.user_role}**")
+    st.sidebar.markdown("---")
+    
+    # Indicador de progreso
+    total_sections = len(sections)
+    progress = (current_section_idx + 1) / total_sections
+    st.sidebar.write(f"📍 Sección: **{current_section_idx + 1}** de **{total_sections}**")
+    st.sidebar.progress(progress)
+    
+    # Menú de navegación por secciones
+    st.sidebar.write("**Saltar a una sección:**")
+    selected_section = st.sidebar.selectbox(
+        "",
+        range(total_sections),
+        index=current_section_idx,
+        format_func=lambda idx: f"{idx + 1}. {sections[idx]['titulo']}",
+        key="section_selector"
+    )
+    
+    if selected_section != current_section_idx:
+        st.session_state.current_section_index = selected_section
+        st.rerun()
+    
+    st.sidebar.markdown("---")
+    if st.sidebar.button("🚪 Cerrar Sesión"):
+        st.session_state.logged_in = False
+        st.session_state.username = ""
+        st.session_state.user_role = "user"
+        reset_survey_state()
         st.rerun()
 
-    current_question = questions[st.session_state.current_question_index]
-
-    st.header(f"Sección {current_section['id_seccion']}: {current_section['titulo']}")
-    st.subheader(f"Pregunta {current_question['id']}")
-
-    # Renderizar la pregunta actual y sus sub-preguntas activas
-    render_question(current_question)
-
-    # Botones de navegación
-    st.markdown("---")
-    col1, col2 = st.columns(2)
+    # === Contenido principal ===
+    current_section = sections[current_section_idx]
+    
+    st.title(survey['titulo'])
+    st.markdown(f"*{survey['descripcion']}*")
+    st.divider()
+    
+    # Encabezado de la sección
+    st.header(f"📋 Sección {current_section['id_seccion']}: {current_section['titulo']}")
+    
+    # Indicador visual de progreso en la sección
+    questions_in_section = len(current_section['preguntas'])
+    st.info(f"**{questions_in_section}** preguntas en esta sección")
+    st.divider()
+    
+    # Renderizar todas las preguntas de la sección
+    for question in current_section['preguntas']:
+        render_question(question)
+    
+    # === Botones de navegación ===
+    st.divider()
+    col1, col2, col3, col4 = st.columns(4)
+    
     with col1:
-        # Habilitar botón "Anterior" si no es la primera pregunta de la primera sección
-        if st.session_state.current_section_index > 0 or st.session_state.current_question_index > 0:
-            if st.button("Anterior"):
-                go_to_previous_question()
-                st.rerun()
-    with col2:
-        # Determinar si es la última pregunta de la última sección
-        is_last_question_of_survey = (
-            st.session_state.current_section_index == len(sections) - 1 and
-            st.session_state.current_question_index == len(questions) - 1
-        )
-        if is_last_question_of_survey:
-            if st.button("Finalizar Encuesta"):
-                st.session_state.current_section_index = -1 # Marcar como finalizado
+        if current_section_idx > 0:
+            if st.button("⬅️ Anterior", use_container_width=True, key="btn_prev"):
+                st.session_state.current_section_index -= 1
                 st.rerun()
         else:
-            if st.button("Siguiente"):
-                go_to_next_question()
+            st.write("")
+    
+    with col2:
+        if st.button("🧹 Limpiar Sección", use_container_width=True, key="btn_clear"):
+            # Limpiar solo las respuestas de la sección actual
+            for question in current_section['preguntas']:
+                q_id = question['id']
+                if q_id in st.session_state.responses:
+                    del st.session_state.responses[q_id]
+            st.rerun()
+    
+    with col3:
+        if st.button("📋 Ver Respuestas", use_container_width=True, key="btn_view"):
+            st.subheader("📝 Sus respuestas hasta ahora:")
+            st.json(st.session_state.responses)
+    
+    with col4:
+        if current_section_idx < len(sections) - 1:
+            if st.button("➡️ Siguiente", use_container_width=True, key="btn_next"):
+                st.session_state.current_section_index += 1
                 st.rerun()
+        else:
+            if st.button("✅ Finalizar", use_container_width=True, key="btn_finish", type="primary"):
+                st.session_state.current_section_index = len(sections)
+                st.rerun()
+
+
 
 # --- Lógica principal de la aplicación ---
 if not st.session_state.logged_in:
     login_page()
 else:
-    survey_app()
+    if st.session_state.user_role == "admin":
+        admin_page()
+    else:
+        survey_app()
