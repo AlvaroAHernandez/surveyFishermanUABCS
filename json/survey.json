@@ -148,7 +148,15 @@
                 "id": "3.5.1",
                 "texto": "No. de Hijos:",
                 "tipo": "numerico",
-                "condicional_en": "Si"
+                "condicional_en": "Si",
+                "sub_preguntas": [
+                  {
+                    "id": "3.7",
+                    "texto": "Ocupación de cada hijo:",
+                    "tipo": "ocupacion_hijos",
+                    "condicional_en": "Si"
+                  }
+                ]
               }
             ]
           },
@@ -180,11 +188,6 @@
               "Terminada",
               "Trunca"
             ]
-          },
-          {
-            "id": "3.7",
-            "texto": "Ocupación (hijo (s)):",
-            "tipo": "texto_abierto"
           },
           {
             "id": "3.8",
@@ -247,7 +250,8 @@
           {
             "id": "3.10",
             "texto": "Energía eléctrica:",
-            "tipo": "opcion_multiple",
+            "tipo": "seleccion_multiple",
+            "use_checkboxes": true,
             "opciones": [
               "Energía CFE",
               "Energía eléctrica autogenerada (paneles, planta eléctrica, etc.)"
@@ -256,7 +260,8 @@
           {
             "id": "3.11",
             "texto": "Agua potable:",
-            "tipo": "opcion_multiple",
+            "tipo": "seleccion_multiple",
+            "use_checkboxes": true,
             "opciones": [
               "Conectada a red municipal",
               "abasto por pipa",
@@ -266,7 +271,8 @@
           {
             "id": "3.12",
             "texto": "Drenaje:",
-            "tipo": "opcion_multiple",
+            "tipo": "seleccion_multiple",
+            "use_checkboxes": true,
             "opciones": [
               "Conectado a red municipal",
               "Drenaje fosa séptica"
@@ -428,9 +434,23 @@
           {
             "id": "4.7.4",
             "texto": "Especie(s) objetivo",
-            "tipo": "grid_seleccion",
-            "instrucciones": "Marque los meses para cada especie",
-            "filas": [
+            "tipo": "tabla_especies_meses",
+            "instrucciones": "Agregue las especies que captura/cultiva y marque los meses de actividad",
+            "meses": [
+              "Ene",
+              "Feb",
+              "Mar",
+              "Abr",
+              "May",
+              "Jun",
+              "Jul",
+              "Ago",
+              "Sep",
+              "Oct",
+              "Nov",
+              "Dic"
+            ],
+            "especies_predefinidas": [
               "Huachinango",
               "Abulón",
               "Almeja chocolate",
@@ -460,20 +480,6 @@
               "Verdillo",
               "Vaquita",
               "Otras"
-            ],
-            "columnas": [
-              "Ene",
-              "Feb",
-              "Mar",
-              "Abr",
-              "May",
-              "Jun",
-              "Jul",
-              "Ago",
-              "Sep",
-              "Oct",
-              "Nov",
-              "Dic"
             ]
           }
         ]
@@ -485,7 +491,8 @@
           {
             "id": "5.1",
             "texto": "¿A quién vende su captura?",
-            "tipo": "opcion_multiple",
+            "tipo": "seleccion_multiple",
+            "use_checkboxes": true,
             "opciones": [
               "Intermediario",
               "Locales a pie de playa",

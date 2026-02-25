@@ -369,16 +369,73 @@ def render_question(question, parent_id=None, show_required_indicator=True):
             st.session_state.responses[full_id] = selected_option
     elif question['tipo'] == 'seleccion_multiple':
         options = question['opciones']
-        selected_options = st.multiselect(
-            label="",
-            options=options,
-            default=default_value if default_value else [],
-            key=f"q_{full_id}",
-            help="Este campo es requerido" if is_required else "Puede seleccionar múltiples opciones"
-        )
-        st.session_state.responses[full_id] = selected_options
-        if is_required and len(selected_options) == 0:
-            st.warning("⚠️ Por favor seleccione al menos una opción")
+        use_checkboxes = question.get('use_checkboxes', False)
+        
+        if use_checkboxes:
+            # Renderizar como checkboxes
+            st.write("*Seleccione una o varias opciones:*")
+            selected_options = []
+            default_list = default_value if isinstance(default_value, list) else []
+            
+            # Crear columnas para mejor layout
+            cols_per_row = min(2, len(options))
+            cols = st.columns(cols_per_row)
+            
+            for idx, option in enumerate(options):
+                with cols[idx % cols_per_row]:
+                    is_checked = st.checkbox(
+                        option,
+                        value=option in default_list,
+                        key=f"q_{full_id}_{option}"
+                    )
+                    if is_checked:
+                        selected_options.append(option)
+            
+            st.session_state.responses[full_id] = selected_options
+            if is_required and len(selected_options) == 0:
+                st.warning("⚠️ Por favor seleccione al menos una opción")
+        else:
+            # Renderizar como multiselect
+            selected_options = st.multiselect(
+                label="",
+                options=options,
+                default=default_value if default_value else [],
+                key=f"q_{full_id}",
+                help="Este campo es requerido" if is_required else "Puede seleccionar múltiples opciones"
+            )
+            st.session_state.responses[full_id] = selected_options
+            if is_required and len(selected_options) == 0:
+                st.warning("⚠️ Por favor seleccione al menos una opción")
+    elif question['tipo'] == 'ocupacion_hijos':
+        st.write("*Agregue la ocupación para cada hijo:*")
+        
+        # Obtener el número de hijos desde la pregunta padre (que es numerico)
+        # El parent_id contiene el ID de la pregunta padre (3.5_3.5.1)
+        # Necesitamos obtener el valor de esa pregunta
+        parent_answer = st.session_state.responses.get(parent_id)
+        
+        if parent_answer is None or parent_answer == 0:
+            st.warning("⚠️ Primero debe indicar el número de hijos (mayor a 0)")
+        else:
+            try:
+                num_hijos = int(parent_answer)
+                ocupaciones_hijos = st.session_state.responses.get(full_id, {})
+                
+                for hijo_idx in range(1, num_hijos + 1):
+                    hijo_key = f"hijo_{hijo_idx}"
+                    default_ocupacion = ocupaciones_hijos.get(hijo_key, "")
+                    
+                    ocupacion = st.text_input(
+                        label=f"👶 Ocupación del hijo {hijo_idx}",
+                        value=default_ocupacion,
+                        key=f"q_{full_id}_{hijo_key}",
+                        placeholder=f"Describe la ocupación del hijo {hijo_idx}"
+                    )
+                    ocupaciones_hijos[hijo_key] = ocupacion
+                
+                st.session_state.responses[full_id] = ocupaciones_hijos
+            except (ValueError, TypeError):
+                st.warning("⚠️ Error al procesar el número de hijos")
     elif question['tipo'] == 'grupo_preguntas':
         st.divider()
         st.subheader(f"📋 {question['texto']}")
@@ -408,46 +465,81 @@ def render_question(question, parent_id=None, show_required_indicator=True):
         st.session_state.responses[full_id] = grid_responses
     elif question['tipo'] == 'tabla_especies_meses':
         st.divider()
-        st.subheader(f"📋 {question['texto']}")
+        st.subheader(f"� {question['texto']}")
         if 'instrucciones' in question:
             st.info(question['instrucciones'])
         
         # Obtener datos actuales de la tabla
-        table_data = st.session_state.responses.get(full_id, [])
+        table_data = st.session_state.responses.get(full_id, {})
         
         # Crear tabla editable con especies y meses
         meses = question['meses']
         especies_predefinidas = question.get('especies_predefinidas', [])
         
-        # Preparar las columnas de la tabla
-        column_config = {
-            'Especie': st.column_config.SelectboxColumn(
-                'Especie',
-                options=especies_predefinidas,
-                required=True
-            )
-        }
+        st.write("**📝 Seleccione las especies y los meses en que las captura/cultiva:**")
         
-        # Agregar columnas para cada mes (booleanas para checkbox)
-        for mes in meses:
-            column_config[mes] = st.column_config.CheckboxColumn(mes)
+        # Crear columnas para los meses (encabezados)
+        col_width = min(12 // (len(meses) + 1), 3)  # Ancho máximo de columna
+        cols = st.columns(len(meses) + 1)
         
-        # Inicializar con una fila vacía si está vacía
-        if not table_data:
-            table_data = [{'Especie': '', **{mes: False for mes in meses}}]
+        with cols[0]:
+            st.write("**Especie**")
         
-        st.write("💾 **Tabla de Especies y Meses** (agregue o edite los datos):")
-        edited_data = st.data_editor(
-            table_data,
-            column_config=column_config,
-            num_rows="dynamic",
-            key=f"q_{full_id}_table_editor",
-            use_container_width=True
-        )
+        for month_idx, mes in enumerate(meses):
+            with cols[month_idx + 1]:
+                st.write(f"**{mes}**")
         
-        # Filtrar filas vacías
-        filtered_data = [row for row in edited_data if row.get('Especie', '').strip()]
-        st.session_state.responses[full_id] = filtered_data
+        # Lista para las filas de datos
+        especies_seleccionadas = []
+        
+        # Permitir agregar nuevas especies
+        num_species = len(table_data) if table_data else 0
+        num_species_to_show = max(num_species, 1)  # Mostrar al menos 1 fila vacía
+        
+        for row_idx in range(num_species_to_show + 1):  # +1 para agregar nueva
+            cols = st.columns(len(meses) + 1)
+            
+            # Especie
+            with cols[0]:
+                especie_key = f"{full_id}_species_{row_idx}"
+                default_especie = table_data.get(f"especie_{row_idx}", "") if isinstance(table_data, dict) else ""
+                
+                selected_especie = st.selectbox(
+                    label="",
+                    options=[""] + especies_predefinidas,
+                    index=0 if default_especie == "" else (especies_predefinidas.index(default_especie) + 1 if default_especie in especies_predefinidas else 0),
+                    key=especie_key,
+                    label_visibility="collapsed"
+                )
+            
+            # Meses (checkboxes)
+            if selected_especie:  # Solo mostrar checkboxes si hay especie seleccionada
+                meses_seleccionados = {}
+                
+                for month_idx, mes in enumerate(meses):
+                    with cols[month_idx + 1]:
+                        mes_key = f"{full_id}_mes_{row_idx}_{mes}"
+                        default_mes = table_data.get(f"especie_{row_idx}_meses", {}).get(mes, False) if isinstance(table_data, dict) else False
+                        
+                        is_checked = st.checkbox(
+                            label="",
+                            value=default_mes,
+                            key=mes_key,
+                            label_visibility="collapsed"
+                        )
+                        meses_seleccionados[mes] = is_checked
+                
+                # Guardar datos de esta fila
+                if isinstance(table_data, dict):
+                    table_data[f"especie_{row_idx}"] = selected_especie
+                    table_data[f"especie_{row_idx}_meses"] = meses_seleccionados
+                
+                especies_seleccionadas.append({
+                    "especie": selected_especie,
+                    "meses": meses_seleccionados
+                })
+        
+        st.session_state.responses[full_id] = table_data
     elif question['tipo'] == 'tabla':
         st.divider()
         st.subheader(f"📊 {question['texto']}")
@@ -572,6 +664,14 @@ def render_question(question, parent_id=None, show_required_indicator=True):
                     display_sub_q = False
                 elif isinstance(parent_answer, list): # Para seleccion_multiple
                     if sub_q['condicional_en'] not in parent_answer:
+                        display_sub_q = False
+                elif isinstance(parent_answer, (int, float)): # Para numerico
+                    # Para números, "Si" significa > 0, "No" significa == 0
+                    if sub_q['condicional_en'] == "Si" and parent_answer == 0:
+                        display_sub_q = False
+                    elif sub_q['condicional_en'] == "No" and parent_answer > 0:
+                        display_sub_q = False
+                    elif sub_q['condicional_en'] not in ["Si", "No"] and str(parent_answer) != sub_q['condicional_en']:
                         display_sub_q = False
                 else: # Para opcion_multiple, si_no
                     if str(parent_answer) != sub_q['condicional_en']:
