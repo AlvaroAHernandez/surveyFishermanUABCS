@@ -71,6 +71,31 @@ def initialize_firebase():
 
 db = initialize_firebase()
 
+# --- Estilos Visuales Personalizados (Tema Azul) ---
+def apply_custom_styles():
+    st.markdown("""
+        <style>
+            /* Títulos y Encabezados en Azul Institucional */
+            h1, h2, h3 {
+                color: #01579B !important;
+            }
+            /* Ajustes para el logo en la barra lateral: Centrado y tamaño controlado */
+            [data-testid="stSidebar"] img {
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+                width: 80%;
+                max-width: 180px;
+                margin-bottom: 20px;
+                filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.1)); /* Sombra suave */
+            }
+            /* Borde sutil para separar la barra lateral */
+            [data-testid="stSidebar"] {
+                border-right: 1px solid #B3E5FC;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
 # --- Constantes ---
 # Asegúrate de que esta ruta sea correcta para tu archivo survey.json
 SURVEY_FILE_PATH = os.path.join(os.path.dirname(__file__), "json", "survey.json")
@@ -283,12 +308,28 @@ def load_user_draft(username):
         pass
     return None, None
 
-def get_csv_download_link():
-    """Genera un DataFrame de Pandas con todos los datos y lo convierte a CSV."""
-    docs = db.collection(COLLECTION_NAME).stream()
+def get_csv_download_link(user_filter=None, start_date=None, end_date=None):
+    """Genera un DataFrame de Pandas con los datos filtrados y lo convierte a CSV."""
+    query = db.collection(COLLECTION_NAME)
+    
+    if user_filter:
+        query = query.where(filter=FieldFilter("user_id", "==", user_filter))
+        
+    docs = query.stream()
     data = []
     for doc in docs:
         doc_data = doc.to_dict()
+        
+        # Filtrado por fecha en memoria (Python)
+        if start_date and end_date:
+            ts = doc_data.get("timestamp")
+            # Verificar si es un objeto datetime válido
+            if isinstance(ts, datetime.datetime):
+                if not (start_date <= ts.date() <= end_date):
+                    continue # Saltar este registro si está fuera del rango
+            else:
+                continue # Saltar si no tiene fecha válida y se activó el filtro
+
         # Aplanar estructura básica
         row = {
             "id_registro": doc.id,
@@ -682,6 +723,8 @@ def render_question(question, parent_id=None):
 
 # --- Página de Autenticación ---
 def login_page():
+    apply_custom_styles() # Aplicar estilos visuales
+    
     # Cargar datos para mostrar título y descripción en el login
     survey_data = load_survey_data(SURVEY_FILE_PATH)
     
@@ -734,6 +777,8 @@ def login_page():
 
 # --- Aplicación Principal del Cuestionario ---
 def survey_app():
+    apply_custom_styles() # Aplicar estilos visuales
+
     if not st.session_state.survey_loaded:
         st.session_state.survey_data = load_survey_data(SURVEY_FILE_PATH)
         if st.session_state.survey_data:
@@ -749,6 +794,14 @@ def survey_app():
     st.sidebar.title("Navegación")
     st.sidebar.write(f"Usuario: **{st.session_state.username}**")
     
+    # Espacio para Logotipo Institucional
+    # Si tienes un archivo 'logo.png' en la carpeta raíz, se mostrará aquí.
+    logo_path = os.path.join(os.path.dirname(__file__), "logo.png")
+    if os.path.exists(logo_path):
+        st.sidebar.image(logo_path, use_container_width=True)
+    else:
+        st.sidebar.header("🐟 SurveyFisherman")
+
     # --- Panel de Administrador (Solo visible para admins) ---
     if st.session_state.role == 'admin':
         st.sidebar.markdown("---")
@@ -788,16 +841,33 @@ def survey_app():
 
         # 3. Descarga de Datos
         with st.sidebar.expander("Descargar Datos"):
-            csv_data = get_csv_download_link()
-            if csv_data:
-                st.download_button(
-                    label="📥 Descargar CSV",
-                    data=csv_data,
-                    file_name=f"encuesta_data_{datetime.date.today()}.csv",
-                    mime="text/csv"
-                )
-            else:
-                st.info("No hay datos para descargar.")
+            st.write("Filtros de descarga:")
+            
+            # Filtro de Usuario
+            users_list = get_all_users()
+            user_options = ["Todos"] + [u['username'] for u in users_list]
+            selected_user = st.selectbox("Filtrar por Usuario", user_options)
+            
+            # Filtro de Fechas
+            use_dates = st.checkbox("Filtrar por Fechas")
+            start_d, end_d = None, None
+            if use_dates:
+                start_d = st.date_input("Desde", datetime.date.today() - datetime.timedelta(days=7))
+                end_d = st.date_input("Hasta", datetime.date.today())
+
+            if st.button("Generar CSV"):
+                u_filter = selected_user if selected_user != "Todos" else None
+                csv_data = get_csv_download_link(u_filter, start_d, end_d)
+                
+                if csv_data:
+                    st.download_button(
+                        label="📥 Descargar CSV Filtrado",
+                        data=csv_data,
+                        file_name=f"encuesta_data_{datetime.date.today()}.csv",
+                        mime="text/csv"
+                    )
+                else:
+                    st.warning("No se encontraron datos con esos filtros.")
 
     if st.sidebar.button("Cerrar Sesión"):
         st.session_state.logged_in = False
