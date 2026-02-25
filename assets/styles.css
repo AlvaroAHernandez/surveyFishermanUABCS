@@ -1,0 +1,313 @@
+/* === Estilos Personalizados para Encuesta - Colores Oficiales UABCS === */
+
+/* Variables de color - Identidad Visual UABCS */
+:root {
+    --uabcs-azul: #009FD4;           /* Azul institucional UABCS */
+    --uabcs-amarillo: #FFD100;       /* Amarillo institucional UABCS */
+    --uabcs-rojo: #CC1E1E;           /* Rojo institucional UABCS */
+    --uabcs-azul-marino: #00497E;    /* Azul marino - fondos oscuros secundarios */
+    --uabcs-azul-profundo: #002147;  /* Azul profundo - fondos de portada y código */
+    --uabcs-azul-suave: #E3F4FB;     /* Azul suave - fondos de diapositivas claras */
+    --uabcs-amarillo-suave: #FFF8CC; /* Amarillo suave - cajas de advertencia */
+    --uabcs-rojo-suave: #FDECEC;     /* Rojo suave - fondos de cajas de error */
+    --uabcs-gris: #4A5568;           /* Gris institucional - texto secundario */
+    --white: #FFFFFF;
+    --text-dark: #1A1A1A;
+}
+
+/* === Estilos Generales === */
+body {
+    background-color: var(--uabcs-azul-suave);
+    color: var(--text-dark);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* === Encabezados === */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--uabcs-azul-profundo);
+    font-weight: 600;
+}
+
+h1 {
+    border-bottom: 3px solid var(--uabcs-azul);
+    padding-bottom: 10px;
+}
+
+/* === Botones === */
+.stButton > button {
+    background-color: var(--uabcs-azul);
+    color: var(--white);
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    padding: 10px 20px;
+}
+
+.stButton > button:hover {
+    background-color: var(--uabcs-azul-marino);
+    box-shadow: 0 4px 8px rgba(0, 73, 126, 0.3);
+    transform: translateY(-2px);
+}
+
+.stButton > button:active {
+    background-color: var(--uabcs-azul-profundo);
+}
+
+/* Botones secundarios */
+.stButton > button[type="secondary"] {
+    background-color: var(--uabcs-amarillo);
+    color: var(--text-dark);
+}
+
+.stButton > button[type="secondary"]:hover {
+    background-color: var(--uabcs-amarillo-suave);
+    color: var(--text-dark);
+}
+
+/* === Inputs === */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea,
+.stSelectbox > div > div > select,
+.stNumberInput > div > div > input {
+    border: 2px solid var(--uabcs-azul);
+    border-radius: 6px;
+    padding: 10px 12px;
+    background-color: var(--white);
+    color: var(--text-dark);
+}
+
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus,
+.stSelectbox > div > div > select:focus,
+.stNumberInput > div > div > input:focus {
+    border-color: var(--uabcs-azul-marino);
+    box-shadow: 0 0 0 3px rgba(0, 159, 212, 0.1);
+}
+
+/* === Selectbox === */
+.stSelectbox [data-baseweb="select"] {
+    background-color: var(--white);
+}
+
+/* === Checkbox === */
+.stCheckbox > label > div > div {
+    background-color: var(--white);
+    border: 2px solid var(--uabcs-azul);
+}
+
+.stCheckbox > label > div > div[class*="checked"] {
+    background-color: var(--uabcs-azul);
+    border-color: var(--uabcs-azul);
+}
+
+/* === Radio === */
+.stRadio > label > div > div {
+    border: 2px solid var(--uabcs-azul);
+}
+
+.stRadio > label > div > div[class*="checked"] {
+    border-color: var(--uabcs-azul);
+    background-color: var(--uabcs-azul);
+}
+
+/* === Alertas y Mensajes === */
+.stAlert {
+    border-left: 4px solid var(--uabcs-azul);
+    border-radius: 6px;
+}
+
+.stAlert [data-testid="stAlertTitle"] {
+    color: var(--uabcs-azul-profundo);
+    font-weight: 600;
+}
+
+/* Info */
+[data-testid*="stAlert"][data-testid*="info"] {
+    background-color: var(--uabcs-azul-suave);
+    border-left-color: var(--uabcs-azul);
+}
+
+/* Success */
+[data-testid*="stAlert"][data-testid*="success"] {
+    background-color: #e6f9f0;
+    border-left-color: #0d9488;
+}
+
+/* Warning */
+[data-testid*="stAlert"][data-testid*="warning"] {
+    background-color: var(--uabcs-amarillo-suave);
+    border-left-color: var(--uabcs-amarillo);
+}
+
+/* Error */
+[data-testid*="stAlert"][data-testid*="error"] {
+    background-color: var(--uabcs-rojo-suave);
+    border-left-color: var(--uabcs-rojo);
+
+/* === Divisores === */
+.stDivider {
+    border-top: 2px solid var(--uabcs-azul);
+}
+
+/* === Sidebar === */
+[data-testid="stSidebar"] {
+    background-color: var(--uabcs-azul-suave);
+    border-right: 3px solid var(--uabcs-azul);
+}
+
+[data-testid="stSidebar"] > div > div > div {
+    color: var(--uabcs-azul-profundo);
+}
+
+/* === Tabs === */
+[data-testid="stTabs"] [role="tablist"] {
+    border-bottom: 3px solid var(--uabcs-azul);
+}
+
+[data-testid="stTabs"] [role="tab"][aria-selected="true"] {
+    color: var(--uabcs-azul-profundo);
+    border-bottom: 4px solid var(--uabcs-azul);
+}
+
+[data-testid="stTabs"] [role="tab"][aria-selected="false"] {
+    color: var(--uabcs-azul-marino);
+}
+
+[data-testid="stTabs"] [role="tab"][aria-selected="false"]:hover {
+    color: var(--uabcs-azul);
+}
+
+/* === Expandible === */
+.stExpander {
+    border: 2px solid var(--uabcs-azul);
+    border-radius: 6px;
+}
+
+.stExpander > div > div > button {
+    color: var(--uabcs-azul-profundo);
+    font-weight: 600;
+}
+
+.stExpander > div > div > button:hover {
+    background-color: var(--uabcs-azul-suave);
+}
+
+/* === Data Editor / Tabla === */
+[data-testid="stDataFrame"] {
+    border: 2px solid var(--uabcs-azul);
+    border-radius: 6px;
+}
+
+[data-testid="stDataFrame"] thead {
+    background-color: var(--uabcs-azul);
+    color: var(--white);
+}
+
+[data-testid="stDataFrame"] tbody tr:hover {
+    background-color: var(--uabcs-azul-suave);
+}
+
+/* === Slider === */
+[data-testid="stSlider"] [role="slider"] {
+    background-color: var(--uabcs-azul);
+}
+
+[data-testid="stSlider"] [role="slider"]:hover {
+    background-color: var(--uabcs-azul-marino);
+}
+
+/* === Métrica === */
+[data-testid="stMetricDelta"] {
+    color: var(--uabcs-azul);
+
+/* === Progress Bar === */
+[data-testid="stProgress"] progress {
+    accent-color: var(--uabcs-azul);
+}
+
+/* === Enlace === */
+a {
+    color: var(--uabcs-azul);
+    text-decoration: none;
+}
+
+a:hover {
+    color: var(--uabcs-azul-marino);
+    text-decoration: underline;
+}
+
+/* === Logo Container === */
+.logo-container {
+    text-align: center;
+    margin: 20px 0;
+    padding: 15px;
+    background-color: var(--white);
+    border-radius: 8px;
+    border: 2px solid var(--uabcs-azul);
+}
+
+.logo-container img {
+    max-width: 200px;
+    height: auto;
+    filter: drop-shadow(0 2px 4px rgba(0, 73, 126, 0.1));
+}
+
+/* === Header Custom === */
+.header-custom {
+    background: linear-gradient(135deg, var(--uabcs-azul-profundo) 0%, var(--uabcs-azul) 100%);
+    color: var(--white);
+    padding: 30px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0, 73, 126, 0.2);
+}
+
+.header-custom h1 {
+    color: var(--white);
+    border: none;
+    margin: 0;
+}
+
+.header-custom p {
+    color: var(--uabcs-azul-suave);
+    margin: 10px 0 0 0;
+}
+
+/* === Card Style === */
+.card {
+    background-color: var(--white);
+    border: 2px solid var(--uabcs-azul);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 15px 0;
+    box-shadow: 0 2px 4px rgba(0, 73, 126, 0.1);
+}
+
+.card:hover {
+    box-shadow: 0 4px 8px rgba(0, 73, 126, 0.15);
+    border-color: var(--uabcs-azul-marino);
+}
+
+/* === Sección activa === */
+.section-active {
+    background-color: var(--uabcs-azul-suave);
+    border-left: 4px solid var(--uabcs-azul);
+    padding-left: 16px;
+}
+
+/* === Badge === */
+.badge {
+    background-color: var(--uabcs-azul);
+    color: var(--white);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* === Spinner === */
+.stSpinner > div > div {
+    border-top-color: var(--uabcs-azul);
+    border-right-color: var(--uabcs-azul);
+}

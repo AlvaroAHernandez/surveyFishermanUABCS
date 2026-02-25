@@ -7,6 +7,17 @@ import os
 import hashlib
 import requests
 
+# --- Cargar CSS personalizado ---
+def load_custom_css():
+    """Carga el archivo CSS personalizado con colores institucionales UABCS."""
+    css_path = os.path.join(os.path.dirname(__file__), "assets", "styles.css")
+    if os.path.exists(css_path):
+        with open(css_path, 'r', encoding='utf-8') as f:
+            css_content = f.read()
+        st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
+
+load_custom_css()
+
 # --- Firebase Initialization ---
 # IMPORTANTE: Para mayor seguridad, es altamente recomendable usar los secretos de Streamlit
 # para tu clave de cuenta de servicio de Firebase, especialmente en entornos de despliegue.
@@ -67,17 +78,16 @@ db = firestore.client()
 
 # --- Crear usuario admin por defecto si no existe ---
 def init_default_admin():
-    """Inicializa el usuario admin por defecto si no existe."""
+    """Inicializa el documento del usuario admin en Firestore si no existe."""
     try:
         # Verificar si el admin existe en Firestore
         admins = list(db.collection(USERS_COLLECTION).where("role", "==", "admin").stream())
         if len(admins) == 0:
-            # Crear el usuario admin en Firebase Auth
-            admin_email = "admin@survey.com"
-            admin_password = "Admin@123456"
+            # Obtener el usuario de Firebase Auth si existe
+            admin_email = "cavieses@uabcs.mx"
             try:
-                admin_user = auth.create_user(email=admin_email, password=admin_password)
-                # Guardar datos en Firestore
+                admin_user = auth.get_user_by_email(admin_email)
+                # Crear el documento en Firestore si no existe
                 admin_data = {
                     "email": admin_email,
                     "role": "admin",
@@ -85,8 +95,8 @@ def init_default_admin():
                     "created_at": firestore.SERVER_TIMESTAMP
                 }
                 db.collection(USERS_COLLECTION).document(admin_user.uid).set(admin_data)
-            except auth.EmailAlreadyExistsError:
-                # Si el email ya existe, solo asegurar que tiene el rol admin
+            except auth.UserNotFoundError:
+                # El usuario no existe en Firebase Auth, saltamos la inicialización
                 pass
     except Exception as e:
         pass  # Si hay error, simplemente continúa
@@ -712,10 +722,17 @@ def login_page():
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.title("🔐 Iniciar Sesión")
-        st.markdown("---")
+        # Mostrar logo si existe
+        logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo_uabcs.png")
+        if os.path.exists(logo_path):
+            st.markdown('<div class="logo-container">', unsafe_allow_html=True)
+            with open(logo_path, "rb") as logo_file:
+                logo_image = logo_file.read()
+            st.image(logo_image, width=120)
+            st.markdown('</div>', unsafe_allow_html=True)
         
-        st.info("📧 **Credenciales de prueba:**\n\n- Email: `admin@survey.com`\n- Contraseña: `Admin@123456`")
+        st.title("Sistema de captura de encuestas de campo")
+        st.markdown("---")
         
         st.write("**Ingrese sus credenciales:**")
         email = st.text_input("📧 Email", placeholder="ejemplo@correo.com")
@@ -738,9 +755,6 @@ def login_page():
                         st.rerun()
                     else:
                         st.error(f"❌ {message}")
-        
-        st.divider()
-        st.markdown("*Por favor, use sus credenciales asignadas para acceder al cuestionario.*")
 
 
 # --- Página de Administrador ---
