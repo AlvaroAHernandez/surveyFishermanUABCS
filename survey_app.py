@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import credentials, firestore, auth
 from google.cloud.firestore import FieldFilter
 import datetime
 import os
@@ -9,6 +9,7 @@ from pydantic import BaseModel, ValidationError
 from typing import List, Optional, Union, Any
 import hashlib
 import pandas as pd
+import requests
 
 # --- Firebase Initialization ---
 # IMPORTANTE: Para mayor seguridad, es altamente recomendable usar los secretos de Streamlit
@@ -47,16 +48,20 @@ def initialize_firebase():
         if "firebase" in st.secrets:
             # Convertir la configuración de secretos a un diccionario
             cred_dict = dict(st.secrets["firebase"])
-            cred = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(cred)
-            st.toast("☁️ Modo Nube: Iniciado con Secrets", icon="☁️")
-            return firestore.client()
+            
+            # Verificar si existen las claves necesarias para la cuenta de servicio (Admin SDK)
+            # Si solo tenemos 'web_api_key', saltamos este paso para usar el archivo local
+            if "private_key" in cred_dict:
+                cred = credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+                st.toast("☁️ Modo Nube: Iniciado con Secrets", icon="☁️")
+                return firestore.client()
     except Exception as e:
         # Solo advertir en consola, continuar intentando con archivo local
         print(f"Advertencia: No se pudo inicializar desde st.secrets: {e}")
 
     # 2. Intentar usar archivo local (Respaldo para Desarrollo Local)
-    local_file = "surver-fisherman-uabcs-firebase-adminsdk-fbsvc-90c8a5fac5.json"
+    local_file = "surver-fisherman-uabcs-firebase-adminsdk-fbsvc-5c73dae273.json"
     local_path = os.path.join(os.path.dirname(__file__), local_file)
     
     if os.path.exists(local_path):
@@ -100,6 +105,7 @@ def apply_custom_styles():
 # Asegúrate de que esta ruta sea correcta para tu archivo survey.json
 SURVEY_FILE_PATH = os.path.join(os.path.dirname(__file__), "json", "survey.json")
 COLLECTION_NAME = "survey_responses" # Nombre de la colección en Firestore
+USERS_COLLECTION = "survey_users" # Colección para almacenar roles de usuario
 
 # --- Inicialización del estado de sesión de Streamlit ---
 # Usamos st.session_state para mantener el estado de la aplicación a través de los reruns
@@ -231,74 +237,114 @@ def save_response_to_firestore(responses, username, status="completed", doc_id=N
         st.error(f"Error al guardar respuestas en Firestore: {e}")
         return None
 
-def hash_password(password):
-    """Genera un hash SHA-256 para la contraseña."""
-    return hashlib.sha256(password.encode()).hexdigest()
-
 def authenticate_user(username, password):
     """
-    Autentica al usuario verificando primero st.secrets (Super Admin)
-    y luego la colección 'users' en Firestore.
+    Autentica al usuario usando la API REST de Firebase Authentication.
     Retorna (bool, role).
     """
-    # Eliminar espacios, pero respetar mayúsculas y minúsculas (Case Sensitive)
-    username = username.strip()
+    email = username.strip() # El nombre de usuario ahora es el email
 
-    # 1. Verificar Super Admin en st.secrets
+    # Obtener la Web API Key de los secretos.
+    # Esta clave es diferente a la del service account.
+    # Se encuentra en la configuración del proyecto de Firebase -> General -> Your apps -> Web app.
     try:
-        if "app_credentials" in st.secrets:
-            if username == st.secrets["app_credentials"]["username"].strip() and \
-               password == st.secrets["app_credentials"]["password"]:
-                return True, "admin"
-    except Exception:
-        pass # Continuar si no hay secretos configurados o error
+        api_key = st.secrets["firebase"]["web_api_key"]
+    except KeyError:
+        return False, "Configuración 'web_api_key' no encontrada en secrets.toml."
 
-    # 2. Verificar en Firestore
+    rest_api_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}"
+    payload = {"email": email, "password": password, "returnSecureToken": True}
+
     try:
-        doc_ref = db.collection('users').document(username)
-        doc = doc_ref.get()
-        if doc.exists:
-            user_data = doc.to_dict()
-            if user_data.get('password') == hash_password(password):
-                return True, user_data.get('role', 'user')
+        r = requests.post(rest_api_url, json=payload)
+        r.raise_for_status() # Lanza un error para respuestas 4xx/5xx
+        
+        # Si la autenticación es exitosa, obtener el rol del usuario desde Firestore
+        user_data = r.json()
+        uid = user_data.get("localId")
+        
+        user_doc = db.collection(USERS_COLLECTION).document(uid).get()
+        
+        if user_doc.exists:
+            role = user_doc.to_dict().get("role", "user")
+        else:
+            # Si el usuario existe en Auth pero no en Firestore, lo creamos con rol 'user'
+            role = "user"
+            db.collection(USERS_COLLECTION).document(uid).set({"email": email, "role": role})
+
+        return True, role
+    except requests.exceptions.HTTPError as err:
+        error_json = err.response.json().get("error", {})
+        message = error_json.get("message", "Error desconocido.")
+        if message == "INVALID_LOGIN_CREDENTIALS":
+            return False, "Email o contraseña incorrectos."
+        return False, f"Error de autenticación: {message}"
     except Exception as e:
-        print(f"Error autenticando en Firestore: {e}")
-    
-    return False, None
+        return False, f"Error de conexión: {e}"
 
-def create_user_in_db(new_username, new_password, role):
-    """Crea un nuevo usuario en la colección 'users' de Firestore."""
+def create_user_in_db(new_email, new_password, role):
+    """Crea un nuevo usuario en Firebase Auth y guarda su rol en Firestore."""
     try:
-        new_username = new_username.strip()
-        doc_ref = db.collection('users').document(new_username)
-        doc_ref.set({
-            "username": new_username,
-            "password": hash_password(new_password),
+        new_email = new_email.strip()
+        # 1. Crear usuario en Firebase Authentication
+        user = auth.create_user(email=new_email, password=new_password)
+        
+        # 2. Guardar el rol y email en Firestore usando el UID del usuario como ID del documento
+        db.collection(USERS_COLLECTION).document(user.uid).set({
+            "email": new_email,
             "role": role,
             "created_at": firestore.SERVER_TIMESTAMP
         })
         return True
+    except auth.EmailAlreadyExistsError:
+        st.error(f"El email '{new_email}' ya está registrado.")
+        return False
     except Exception as e:
-        st.error(f"Error al crear usuario: {e}")
+        st.error(f"Error al crear usuario: {str(e)}")
+        return False
+
+def update_user_role(uid, new_role):
+    """Actualiza el rol de un usuario en Firestore."""
+    try:
+        db.collection(USERS_COLLECTION).document(uid).update({"role": new_role})
+        return True
+    except Exception as e:
+        st.error(f"Error al actualizar el rol: {e}")
         return False
 
 def get_all_users():
     """Obtiene la lista de todos los usuarios registrados en Firestore."""
     try:
-        docs = db.collection('users').stream()
-        return [doc.to_dict() for doc in docs]
+        docs = db.collection(USERS_COLLECTION).stream()
+        users_list = []
+        for doc in docs:
+            user_data = doc.to_dict()
+            user_data['uid'] = doc.id # Agregar el UID del documento
+            users_list.append(user_data)
+        return users_list
     except Exception as e:
         st.error(f"Error al obtener usuarios: {e}")
         return []
 
 def delete_user_from_db(username):
     """Elimina un usuario de la base de datos."""
+    email_to_delete = username.strip()
     try:
-        username = username.strip()
-        db.collection('users').document(username).delete()
+        # 1. Obtener el usuario de Firebase Auth para conseguir su UID
+        user = auth.get_user_by_email(email_to_delete)
+        
+        # 2. Eliminar el usuario de Firebase Auth
+        auth.delete_user(user.uid)
+        
+        # 3. Eliminar el documento del usuario en Firestore
+        db.collection(USERS_COLLECTION).document(user.uid).delete()
+        
         return True
+    except auth.UserNotFoundError:
+        st.error(f"No se encontró el usuario con email '{email_to_delete}' para eliminar.")
+        return False
     except Exception as e:
-        st.error(f"Error al eliminar usuario: {e}")
+        st.error(f"Error al eliminar usuario: {str(e)}")
         return False
 
 def load_user_draft(username):
@@ -755,21 +801,21 @@ def login_page():
         st.title("Iniciar Sesión en la Encuesta")
 
     st.markdown("---")
-    username = st.text_input("Usuario", autocomplete="username")
+    username = st.text_input("Email", autocomplete="username", placeholder="tu@email.com")
     password = st.text_input("Contraseña", type="password", autocomplete="current-password")
 
     if st.button("Entrar"):
         # Eliminar espacios, pero respetar mayúsculas y minúsculas
         username = username.strip()
         
-        is_valid, role = authenticate_user(username, password)
+        is_valid, result = authenticate_user(username, password)
         if is_valid:
             # Verificar si hay borradores pendientes
             draft_id, draft_data = load_user_draft(username)
             
             st.session_state.logged_in = True
             st.session_state.username = username
-            st.session_state.role = role
+            st.session_state.role = result # El rol viene en el resultado
             
             if draft_id:
                 st.session_state.current_response_id = draft_id
@@ -788,11 +834,11 @@ def login_page():
                 st.toast("¡Borrador recuperado! Continuando donde lo dejaste.", icon="📂")
                 st.success(f"¡Bienvenido de nuevo {username}! Sesión recuperada.")
             else:
-                st.success(f"¡Bienvenido {username} ({role})!")
+                st.success(f"¡Bienvenido {username} ({result})!")
             
             st.rerun()
         else:
-            st.error("Usuario o contraseña incorrectos.")
+            st.error(result) # Mostrar el mensaje de error devuelto por la función
 
 
 # --- Aplicación Principal del Cuestionario ---
@@ -826,7 +872,7 @@ def survey_app():
         
         # 1. Gestión de Usuarios
         with st.sidebar.expander("Crear Usuario"):
-            new_user = st.text_input("Nuevo Usuario", autocomplete="off")
+            new_user = st.text_input("Nuevo Email de Usuario", autocomplete="off")
             new_pass = st.text_input("Nueva Contraseña", type="password", autocomplete="new-password")
             new_role = st.selectbox("Rol", ["user", "admin"])
             if st.button("Crear"):
@@ -842,17 +888,41 @@ def survey_app():
         with st.sidebar.expander("Gestionar Usuarios"):
             users = get_all_users()
             if users:
-                st.caption("Lista de usuarios registrados:")
-                for u in users:
-                    u_name = u.get('username', 'Sin nombre')
-                    u_role = u.get('role', 'user')
+                st.caption("Gestionar roles y eliminar usuarios:")
+                for i, user_data in enumerate(users):
+                    email = user_data.get('email', 'Sin email')
+                    current_role = user_data.get('role', 'user')
+                    uid = user_data.get('uid')
+
+                    # No permitir que el admin actual se degrade a sí mismo o se elimine
+                    is_current_user = (email == st.session_state.username)
+
+                    col1, col2, col3 = st.columns([2, 1.5, 0.8])
                     
-                    col1, col2 = st.columns([3, 1])
-                    col1.text(f"👤 {u_name} ({u_role})")
-                    if col2.button("🗑️", key=f"del_{u_name}", help="Eliminar usuario"):
-                        if delete_user_from_db(u_name):
-                            st.success(f"Eliminado: {u_name}")
-                            st.rerun()
+                    with col1:
+                        st.write(email)
+                    
+                    with col2:
+                        roles = ["admin", "user"]
+                        # Deshabilitar el cambio de rol para el usuario actual
+                        new_role = st.selectbox(
+                            "Rol", 
+                            roles, 
+                            index=roles.index(current_role), 
+                            key=f"role_{uid}",
+                            label_visibility="collapsed",
+                            disabled=is_current_user
+                        )
+                        if new_role != current_role:
+                            if update_user_role(uid, new_role):
+                                st.toast(f"Rol de {email} actualizado a {new_role}")
+                                st.rerun() # Recargar para reflejar el cambio
+                    
+                    with col3:
+                        if st.button("🗑️", key=f"del_{uid}", help="Eliminar usuario", disabled=is_current_user):
+                            if delete_user_from_db(email):
+                                st.toast(f"Usuario {email} eliminado.")
+                                st.rerun()
             else:
                 st.info("No hay usuarios registrados.")
 
@@ -862,7 +932,7 @@ def survey_app():
             
             # Filtro de Usuario
             users_list = get_all_users()
-            user_options = ["Todos"] + [u['username'] for u in users_list]
+            user_options = ["Todos"] + [u.get('email', 'N/A') for u in users_list]
             selected_user = st.selectbox("Filtrar por Usuario", user_options)
             
             # Filtro de Fechas
