@@ -180,7 +180,6 @@ class SurveyRoot(BaseModel):
 
 # --- Funciones de ayuda ---
 
-@st.cache_data # Cacha los datos del JSON para no cargarlos en cada rerun
 def load_survey_data(file_path):
     """Carga y valida las preguntas del cuestionario desde un archivo JSON."""
     # Se agregó comentario para invalidar caché tras cambios en modelo Pydantic
@@ -203,10 +202,13 @@ def load_survey_data(file_path):
         st.json(e.errors()) # Mostrar detalles del error
         return None
 
-def save_response_to_firestore(responses, username):
+def save_response_to_firestore(responses, username, status="completed", doc_id=None):
     """Guarda las respuestas recolectadas en Firestore."""
     try:
-        doc_ref = db.collection(COLLECTION_NAME).document()
+        if doc_id:
+            doc_ref = db.collection(COLLECTION_NAME).document(doc_id)
+        else:
+            doc_ref = db.collection(COLLECTION_NAME).document()
         
         # Serializar respuestas (convertir objetos date a string ISO)
         serialized_responses = {
@@ -217,15 +219,17 @@ def save_response_to_firestore(responses, username):
         responses_to_save = {
             "user_id": username,
             "timestamp": firestore.SERVER_TIMESTAMP,
-            "responses": responses,
+            "status": status,
             "responses": serialized_responses
         }
-        doc_ref.set(responses_to_save)
-        st.success(f"¡Respuestas guardadas con éxito en Firestore! ID: {doc_ref.id}")
-        return True
+        doc_ref.set(responses_to_save, merge=True)
+        
+        if status == "completed":
+            st.success(f"¡Respuestas guardadas con éxito en Firestore! ID: {doc_ref.id}")
+        return doc_ref.id
     except Exception as e:
         st.error(f"Error al guardar respuestas en Firestore: {e}")
-        return False
+        return None
 
 def hash_password(password):
     """Genera un hash SHA-256 para la contraseña."""
@@ -374,24 +378,39 @@ def auto_save_draft():
         st.session_state.current_response_id = doc_id
         st.toast("Borrador autoguardado", icon="💾")
 
-def check_sub_question_condition(sub_q, parent_answer):
+def check_sub_question_condition(sub_q, parent_answer, parent_full_id=None):
     """Verifica si una sub-pregunta debe activarse basada en la respuesta del padre."""
     # Verificar condición primaria ('condicional_en')
     if 'condicional_en' in sub_q:
+        # Si existe 'condicion_valor', se usa ese valor para comparar.
+        # Si no, se usa el valor de 'condicional_en' (comportamiento legacy/simple).
+        expected_value = sub_q.get('condicion_valor', sub_q['condicional_en'])
+
         if parent_answer is None:
             return False
         elif isinstance(parent_answer, list):
-            if sub_q['condicional_en'] not in parent_answer:
+            if expected_value not in parent_answer:
                 return False
         else:
-            if str(parent_answer) != sub_q['condicional_en']:
+            if str(parent_answer) != str(expected_value):
                 return False
 
     # Verificar condición secundaria ('condicion_secundaria')
     if 'condicion_secundaria' in sub_q:
         secondary_q_id = sub_q['condicion_secundaria']['pregunta_id']
         secondary_q_values = sub_q['condicion_secundaria']['valores']
-        secondary_answer = st.session_state.responses.get(secondary_q_id)
+        
+        # Construir ID completo para la pregunta secundaria (asumiendo hermandad)
+        if parent_full_id:
+            full_secondary_id = f"{parent_full_id}_{secondary_q_id}"
+        else:
+            full_secondary_id = secondary_q_id
+            
+        secondary_answer = st.session_state.responses.get(full_secondary_id)
+        
+        # Fallback: intentar ID absoluto si no se encuentra relativo
+        if secondary_answer is None and parent_full_id:
+             secondary_answer = st.session_state.responses.get(secondary_q_id)
 
         if secondary_answer is None:
             return False
@@ -409,7 +428,7 @@ def validate_question_recursive(question, parent_id, errors):
     full_id = f"{parent_id}_{q_id}" if parent_id else q_id
     
     # 1. Validar la pregunta actual si es obligatoria
-    if question.get('obligatoria', True):
+    if question.get('obligatoria', True) and question.get('tipo') != 'grupo_preguntas':
         response = st.session_state.responses.get(full_id)
         
         # Criterios de "vacío"
@@ -428,8 +447,32 @@ def validate_question_recursive(question, parent_id, errors):
     if 'sub_preguntas' in question:
         parent_answer = st.session_state.responses.get(full_id)
         for sub_q in question['sub_preguntas']:
-            if check_sub_question_condition(sub_q, parent_answer):
+            if check_sub_question_condition(sub_q, parent_answer, parent_full_id=full_id):
                 validate_question_recursive(sub_q, full_id, errors)
+
+    # 3. Validar preguntas hijas de un grupo (grupo_preguntas)
+    if 'preguntas' in question:
+        for child_q in question['preguntas']:
+            validate_question_recursive(child_q, full_id, errors)
+
+def clear_question_responses_recursive(question, parent_id):
+    """Elimina recursivamente las respuestas de una pregunta y sus descendientes del estado."""
+    q_id = question['id']
+    full_id = f"{parent_id}_{q_id}" if parent_id else q_id
+    
+    # 1. Eliminar la respuesta de la pregunta actual si existe
+    if full_id in st.session_state.responses:
+        del st.session_state.responses[full_id]
+        
+    # 2. Recorrer y limpiar sub-preguntas
+    if 'sub_preguntas' in question:
+        for sub_q in question['sub_preguntas']:
+            clear_question_responses_recursive(sub_q, full_id)
+
+    # 3. Recorrer preguntas de grupo (si aplica)
+    if 'preguntas' in question:
+        for child_q in question['preguntas']:
+            clear_question_responses_recursive(child_q, full_id)
 
 def validate_current_section():
     """Valida todas las preguntas de la sección actual."""
@@ -511,10 +554,21 @@ def _render_number_input(question, full_id, default_value):
         key=f"q_{full_id}"
     )
 
-def _render_radio_input(question, full_id, default_value):
-    # Maneja tanto 'opcion_multiple' como 'si_no'
+def _render_select_input(question, full_id, default_value):
     options = question.get('opciones', ["Si", "No"])
-    index = options.index(default_value) if default_value in options else 0
+    index = options.index(default_value) if default_value in options else None
+    selected_option = st.selectbox(
+        label=f"Respuesta para {question['id']}" + (" *" if question.get('obligatoria', True) else ""),
+        options=options,
+        index=index,
+        placeholder="Seleccione una opción...",
+        key=f"q_{full_id}"
+    )
+    st.session_state.responses[full_id] = selected_option
+
+def _render_radio_input(question, full_id, default_value):
+    options = question.get('opciones', ["Si", "No"])
+    index = options.index(default_value) if default_value in options else None
     selected_option = st.radio(
         label=f"Respuesta para {question['id']}" + (" *" if question.get('obligatoria', True) else ""),
         options=options,
@@ -605,11 +659,12 @@ def _render_complex_table(question, full_id, default_value):
 
             if col['tipo'] == 'opcion_multiple':
                 options = col['opciones']
-                index = options.index(current_col_response) if current_col_response in options else 0
-                row_responses[col_id] = st.radio(
+                index = options.index(current_col_response) if current_col_response in options else None
+                row_responses[col_id] = st.selectbox(
                     label=f"{col['texto']} para {row_label}",
                     options=options,
                     index=index,
+                    placeholder="Seleccione...",
                     key=col_full_id
                 )
             elif col['tipo'] == 'seleccion_multiple':
@@ -634,7 +689,7 @@ RENDER_HANDLERS = {
     'texto_abierto': _render_text_input,
     'fecha': _render_date_input,
     'numerico': _render_number_input,
-    'opcion_multiple': _render_radio_input,
+    'opcion_multiple': _render_select_input,
     'si_no': _render_radio_input,
     'seleccion_multiple': _render_multiselect,
     'grupo_preguntas': _render_group,
@@ -677,48 +732,13 @@ def render_question(question, parent_id=None):
         parent_answer = st.session_state.responses.get(full_id)
         for sub_q in question['sub_preguntas']:
             sub_q_full_id = f"{full_id}_{sub_q['id']}"
-            display_sub_q = True # Asumir que se muestra a menos que las condiciones fallen
-            display_sub_q = check_sub_question_condition(sub_q, parent_answer)
-
-            # Verificar condición primaria ('condicional_en')
-            if 'condicional_en' in sub_q:
-                if parent_answer is None: # Si la pregunta padre no ha sido respondida, no puede cumplir la condición
-                    display_sub_q = False
-                elif isinstance(parent_answer, list): # Para seleccion_multiple
-                    if sub_q['condicional_en'] not in parent_answer:
-                        display_sub_q = False
-                else: # Para opcion_multiple, si_no
-                    if str(parent_answer) != sub_q['condicional_en']:
-                        display_sub_q = False
-
-            # Verificar condición secundaria ('condicion_secundaria') si la primaria se cumple
-            if display_sub_q and 'condicion_secundaria' in sub_q:
-                secondary_q_id = sub_q['condicion_secundaria']['pregunta_id']
-                secondary_q_values = sub_q['condicion_secundaria']['valores']
-                secondary_answer = st.session_state.responses.get(secondary_q_id)
-
-                if secondary_answer is None: # Si la pregunta secundaria no ha sido respondida, no puede cumplir la condición
-                    display_sub_q = False
-                elif isinstance(secondary_answer, list):
-                    if not any(val in secondary_answer for val in secondary_q_values):
-                        display_sub_q = False
-                else:
-                    if secondary_answer not in secondary_q_values:
-                        display_sub_q = False
+            display_sub_q = check_sub_question_condition(sub_q, parent_answer, parent_full_id=full_id)
 
             if display_sub_q:
                 render_question(sub_q, parent_id=full_id)
             else:
-                # Si la sub-pregunta no se muestra, eliminar su respuesta del estado de sesión.
-                # Esto es crucial para evitar guardar respuestas de preguntas que no eran relevantes.
-                if sub_q_full_id in st.session_state.responses:
-                    del st.session_state.responses[sub_q_full_id]
-                # Eliminar recursivamente las respuestas de sus sub-sub-preguntas si las hay
-                if 'sub_preguntas' in sub_q:
-                    for sub_sub_q in sub_q['sub_preguntas']:
-                        sub_sub_q_full_id = f"{sub_q_full_id}_{sub_sub_q['id']}"
-                        if sub_sub_q_full_id in st.session_state.responses:
-                            del st.session_state.responses[sub_sub_q_full_id]
+                # Limpieza recursiva robusta: elimina esta pregunta y toda su descendencia
+                clear_question_responses_recursive(sub_q, full_id)
 
 
 # --- Página de Autenticación ---
@@ -779,13 +799,10 @@ def login_page():
 def survey_app():
     apply_custom_styles() # Aplicar estilos visuales
 
-    if not st.session_state.survey_loaded:
-        st.session_state.survey_data = load_survey_data(SURVEY_FILE_PATH)
-        if st.session_state.survey_data:
-            st.session_state.survey_loaded = True
-        else:
-            # El mensaje de error ya fue mostrado por load_survey_data
-            return
+    # Cargar datos siempre para reflejar cambios en el JSON inmediatamente
+    st.session_state.survey_data = load_survey_data(SURVEY_FILE_PATH)
+    if not st.session_state.survey_data:
+        return
 
     survey = st.session_state.survey_data
     sections = survey['secciones']
@@ -798,7 +815,7 @@ def survey_app():
     # Si tienes un archivo 'logo.png' en la carpeta raíz, se mostrará aquí.
     logo_path = os.path.join(os.path.dirname(__file__), "logo.png")
     if os.path.exists(logo_path):
-        st.sidebar.image(logo_path, use_container_width=True)
+        st.sidebar.image(logo_path, width="stretch")
     else:
         st.sidebar.header("🐟 SurveyFisherman")
 

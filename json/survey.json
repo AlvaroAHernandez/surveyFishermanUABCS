@@ -149,42 +149,45 @@
                 "texto": "No. de Hijos:",
                 "tipo": "numerico",
                 "condicional_en": "Si"
-              }
-            ]
-          },
-          {
-            "id": "3.6",
-            "texto": "Escolaridad de los hijos:",
-            "tipo": "opcion_multiple",
-            "opciones": [
-              "Primaria",
-              "Secundaria",
-              "Preparatoria",
-              "Universidad",
-              "Otro"
-            ],
-            "sub_preguntas": [
+              },
               {
-                "id": "3.6.1",
-                "texto": "Especifique:",
+                "id": "3.6",
+                "texto": "Escolaridad de los hijos:",
+                "tipo": "opcion_multiple",
+                "condicional_en": "Si",
+                "opciones": [
+                  "Primaria",
+                  "Secundaria",
+                  "Preparatoria",
+                  "Universidad",
+                  "Otro"
+                ],
+                "sub_preguntas": [
+                  {
+                    "id": "3.6.1",
+                    "texto": "Especifique:",
+                    "tipo": "texto_abierto",
+                    "condicional_en": "Otro"
+                  }
+                ]
+              },
+              {
+                "id": "3.6.2",
+                "texto": "Estado Escolaridad (hijos):",
+                "tipo": "opcion_multiple",
+                "condicional_en": "Si",
+                "opciones": [
+                  "Terminada",
+                  "Trunca"
+                ]
+              },
+              {
+                "id": "3.7",
+                "texto": "Ocupación (hijo (s)):",
                 "tipo": "texto_abierto",
-                "condicional_en": "Otro"
+                "condicional_en": "Si"
               }
             ]
-          },
-          {
-            "id": "3.6.2",
-            "texto": "Estado Escolaridad (hijos):",
-            "tipo": "opcion_multiple",
-            "opciones": [
-              "Terminada",
-              "Trunca"
-            ]
-          },
-          {
-            "id": "3.7",
-            "texto": "Ocupación (hijo (s)):",
-            "tipo": "texto_abierto"
           },
           {
             "id": "3.8",
@@ -220,27 +223,47 @@
             "id": "3.9.2",
             "texto": "Material de la vivienda:",
             "tipo": "grupo_preguntas",
-            "instrucciones": "Claves: a) piso tierra; b) piso concreto; c) azulejo o vitropiso; c) pared de block; d) pared de ladrillo; e) pared de madera; f) pared de lámina; g) pared de cartón; h) techo de cemento o vaciado; i) techo de madera; j) techo de lámina; k) techo de cartón; l) hoja de palma.",
+            "instrucciones": "Seleccione el material principal de la vivienda.",
             "preguntas": [
               {
                 "id": "3.9.2.1",
                 "texto": "Piso",
-                "tipo": "texto_abierto"
+                "tipo": "opcion_multiple",
+                "opciones": [
+                  "Tierra",
+                  "Concreto",
+                  "Azulejo o vitropiso"
+                ]
               },
               {
                 "id": "3.9.2.2",
                 "texto": "Paredes",
-                "tipo": "texto_abierto"
+                "tipo": "opcion_multiple",
+                "opciones": [
+                  "Block",
+                  "Ladrillo",
+                  "Madera",
+                  "Lámina",
+                  "Cartón"
+                ]
               },
               {
                 "id": "3.9.2.3",
                 "texto": "Techo",
-                "tipo": "texto_abierto"
+                "tipo": "opcion_multiple",
+                "opciones": [
+                  "Cemento o vaciado",
+                  "Madera",
+                  "Lámina",
+                  "Cartón",
+                  "Hoja de palma"
+                ]
               },
               {
                 "id": "3.9.2.4",
                 "texto": "Otra",
-                "tipo": "texto_abierto"
+                "tipo": "texto_abierto",
+                "obligatoria": false
               }
             ]
           },
