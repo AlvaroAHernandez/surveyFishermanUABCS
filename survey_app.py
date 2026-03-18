@@ -127,6 +127,10 @@ if 'survey_loaded' not in st.session_state:
     st.session_state.survey_loaded = False
 if 'current_response_id' not in st.session_state:
     st.session_state.current_response_id = None # ID del documento en Firestore (para borradores)
+if 'current_menu' not in st.session_state:
+    st.session_state.current_menu = "Mis Encuestas"
+if 'view_survey_data' not in st.session_state:
+    st.session_state.view_survey_data = None
 
 # --- Modelos Pydantic para Validación ---
 class SecondaryCondition(BaseModel):
@@ -357,6 +361,157 @@ def load_user_draft(username):
     except Exception:
         pass
     return None, None
+
+def get_user_surveys(username, is_admin=False):
+    """Obtiene todas las encuestas. Si es admin, trae todas; si no, solo las del usuario."""
+    try:
+        if is_admin:
+            docs = db.collection(COLLECTION_NAME).stream()
+        else:
+            docs = db.collection(COLLECTION_NAME).where(filter=FieldFilter("user_id", "==", username)).stream()
+        surveys = []
+        for doc in docs:
+            data = doc.to_dict()
+            data['id'] = doc.id
+            surveys.append(data)
+        return surveys
+    except Exception as e:
+        st.error(f"Error al obtener encuestas: {e}")
+        return []
+
+def delete_survey_from_db(survey_id):
+    """Elimina permanentemente una encuesta (borrador o completada) de Firestore."""
+    try:
+        db.collection(COLLECTION_NAME).document(survey_id).delete()
+        return True
+    except Exception as e:
+        st.error(f"Error al eliminar la encuesta: {e}")
+        return False
+
+def _render_readonly_question(q, responses, parent_id=""):
+    """Renderiza recursivamente una pregunta y su respuesta en modo solo lectura."""
+    q_id = q['id']
+    full_id = f"{parent_id}_{q_id}" if parent_id else q_id
+    
+    # Comprobar si esta pregunta tiene respuesta
+    if full_id in responses:
+        ans = responses[full_id]
+        st.markdown(f"**{q['texto']}**")
+        
+        if isinstance(ans, list):
+            if len(ans) > 0 and isinstance(ans[0], dict):
+                # Respuesta tipo tabla dinámica
+                st.dataframe(ans, use_container_width=True)
+            else:
+                # Respuesta de selección múltiple normal
+                st.write(", ".join(map(str, ans)) if ans else "*Sin respuesta*")
+        elif isinstance(ans, dict):
+            # Tablas complejas, grid o escalas
+            for k, v in ans.items():
+                if isinstance(v, list):
+                    st.write(f"- **{k}**: {', '.join(map(str, v)) if v else 'Ninguno'}")
+                elif isinstance(v, dict):
+                    st.write(f"- **{k}**:")
+                    for sub_k, sub_v in v.items():
+                        st.write(f"  - *{sub_k}*: {sub_v}")
+                else:
+                    st.write(f"- **{k}**: {v}")
+        else:
+            # Respuestas escalares (texto, número, fecha, etc)
+            st.write(str(ans) if ans is not None and str(ans).strip() != "" else "*Sin respuesta*")
+            
+    # Procesar sub-preguntas (independientemente de si el padre tuvo respuesta para no perder nada)
+    if 'sub_preguntas' in q:
+        for sub_q in q['sub_preguntas']:
+            _render_readonly_question(sub_q, responses, full_id)
+            
+    # Procesar grupos de preguntas
+    if 'preguntas' in q:
+        for child_q in q['preguntas']:
+            _render_readonly_question(child_q, responses, full_id)
+
+def render_readonly_view():
+    """Renderiza la página completa de detalle de una encuesta completada."""
+    survey_record = st.session_state.get('view_survey_data')
+    if not survey_record:
+        st.warning("No hay encuesta seleccionada.")
+        if st.button("Volver a Mis Encuestas"):
+            st.session_state.current_menu = "Mis Encuestas"
+            st.rerun()
+        return
+        
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.header("📄 Detalle de Encuesta")
+        st.write(f"**ID de Registro:** `{survey_record['id']}` | **Fecha:** {str(survey_record.get('timestamp', ''))[:16]}")
+    with col2:
+        if st.button("⬅️ Volver", use_container_width=True):
+            st.session_state.current_menu = "Mis Encuestas"
+            st.session_state.view_survey_data = None
+            st.rerun()
+            
+    st.divider()
+    
+    responses = survey_record.get("responses", {})
+    survey_schema = st.session_state.survey_data
+    
+    if survey_schema:
+        for section in survey_schema['secciones']:
+            st.subheader(f"Sección {section['id_seccion']}: {section['titulo']}")
+            for q in section['preguntas']:
+                _render_readonly_question(q, responses)
+            st.divider()
+
+def render_user_surveys_view():
+    """Renderiza la vista de lista de encuestas del usuario (Dashboard)."""
+    is_admin = st.session_state.role == 'admin'
+    
+    st.header("📋 Todas las Encuestas" if is_admin else "📋 Mis Encuestas")
+    st.write("Aquí puedes consultar el historial de todas las encuestas capturadas." if is_admin else "Aquí puedes consultar el historial de las encuestas que has capturado.")
+    
+    with st.spinner("Cargando encuestas..."):
+        surveys = get_user_surveys(st.session_state.username, is_admin)
+    
+    if not surveys:
+        st.info("Aún no has capturado ninguna encuesta o no hay borradores guardados.")
+        return
+
+    for survey in surveys:
+        status = survey.get("status", "desconocido")
+        status_icon = "✅" if status == "completed" else "📝"
+        status_text = "Completada" if status == "completed" else "Borrador"
+        date_str = str(survey.get("timestamp", "Fecha desconocida"))[:16]
+        user_info = f" | 👤 {survey.get('user_id', 'Desconocido')}" if is_admin else ""
+        
+        with st.expander(f"{status_icon} ID: {survey['id']} | {status_text} | {date_str}{user_info}"):
+            st.write("Seleccione una opción para interactuar con este registro.")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                is_owner = survey.get("user_id") == st.session_state.username
+                
+                # Permitir continuar el borrador solo si el usuario es el creador del mismo
+                if status == "draft" and is_owner:
+                    if st.button("✏️ Continuar Borrador", key=f"edit_{survey['id']}"):
+                        st.session_state.current_response_id = survey['id']
+                        st.session_state.responses = survey.get("responses", {})
+                        st.session_state.current_menu = "Nueva Encuesta"
+                        st.rerun()
+                
+                # Mostrar el botón de detalle si está completada o si el usuario es admin (para ver borradores ajenos)
+                if status == "completed" or is_admin:
+                    if st.button("👀 Ver Detalle", key=f"view_{survey['id']}"):
+                        st.session_state.view_survey_data = survey
+                        st.session_state.current_menu = "Ver Encuesta"
+                        st.rerun()
+            with col2:
+                # Eliminar exclusivo para administradores
+                if is_admin:
+                    # Agregamos type="primary" pero advertimos visualmente, en un futuro se puede agregar un confirm dialog
+                    if st.button("🗑️ Eliminar", key=f"del_survey_{survey['id']}"):
+                        if delete_survey_from_db(survey['id']):
+                            st.toast(f"Registro {survey['id']} eliminado.", icon="🗑️")
+                            st.rerun()
 
 def get_csv_download_link(user_filter=None, start_date=None, end_date=None):
     """Genera un DataFrame de Pandas con los datos filtrados y lo convierte a CSV."""
@@ -865,6 +1020,26 @@ def survey_app():
     else:
         st.sidebar.header("🐟 SurveyFisherman")
 
+    # --- Menú de Navegación del Usuario ---
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("Menú Principal")
+    
+    if st.sidebar.button(
+        "Mis Encuestas", 
+        use_container_width=True,
+        type="primary" if st.session_state.current_menu in ["Mis Encuestas", "Ver Encuesta"] else "secondary"
+    ):
+        st.session_state.current_menu = "Mis Encuestas"
+        st.rerun()
+        
+    if st.sidebar.button(
+        "Nueva Encuesta", 
+        use_container_width=True,
+        type="primary" if st.session_state.current_menu == "Nueva Encuesta" else "secondary"
+    ):
+        st.session_state.current_menu = "Nueva Encuesta"
+        st.rerun()
+
     # --- Panel de Administrador (Solo visible para admins) ---
     if st.session_state.role == 'admin':
         st.sidebar.markdown("---")
@@ -961,9 +1136,18 @@ def survey_app():
         st.session_state.username = ""
         st.session_state.role = ""
         st.session_state.current_response_id = None
+        st.session_state.current_menu = "Mis Encuestas"
         reset_survey_state() # Limpiar el estado de la encuesta al cerrar sesión
         st.rerun()
     st.sidebar.markdown("---")
+
+    # Enrutar a la vista correspondiente
+    if st.session_state.current_menu == "Mis Encuestas":
+        render_user_surveys_view()
+        return
+    elif st.session_state.current_menu == "Ver Encuesta":
+        render_readonly_view()
+        return
 
     # Lógica para cuando la encuesta ha terminado
     if st.session_state.current_section_index == -1: # Indica que la encuesta ha finalizado
@@ -981,11 +1165,13 @@ def survey_app():
             ):
                 st.balloons() # Pequeña celebración visual
                 reset_survey_state() # Reiniciar para una nueva encuesta
+                st.session_state.current_menu = "Mis Encuestas"
                 st.rerun()
             else:
                 st.error("Hubo un problema al guardar sus respuestas.")
         if st.button("Volver a empezar"):
             reset_survey_state()
+            st.session_state.current_menu = "Mis Encuestas"
             st.rerun()
         return
 
