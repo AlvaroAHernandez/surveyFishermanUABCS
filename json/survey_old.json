@@ -1,0 +1,401 @@
+{
+  "cuestionario": {
+    "titulo": "ENCUESTA OLD - ADAPTADA AL NUEVO FORMATO",
+    "descripcion": "Archivo histórico de encuestas adaptado a la estructura de la nueva plataforma para su importación y análisis comparativo.",
+    "secciones": [
+      {
+        "id_seccion": 1,
+        "titulo": "DATOS DE IDENTIFICACIÓN",
+        "preguntas": [
+          {
+            "id": "1.1",
+            "texto": "Lugar de la encuesta:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "1.2",
+            "texto": "Nombre del encuestador:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "old_lat",
+            "texto": "Latitud Y:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "old_lon",
+            "texto": "Longitud X:",
+            "tipo": "texto_abierto"
+          }
+        ]
+      },
+      {
+        "id_seccion": 2,
+        "titulo": "INFORMACIÓN DEL ENCUESTADO Y DEMOGRÁFICA",
+        "preguntas": [
+          {
+            "id": "2.1",
+            "texto": "Nombre encuestado:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "old_2.2",
+            "texto": "Organización / Cooperativa:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "old_2.3",
+            "texto": "Años trabajando:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "old_2.4",
+            "texto": "Municipio de origen:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "3.4",
+            "texto": "Estado Civil:",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "Soltero",
+              "Casado",
+              "Divorciado",
+              "Viudo",
+              "Unión Libre"
+            ]
+          },
+          {
+            "id": "3.2",
+            "texto": "Rango de Edad:",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "21-31 años",
+              "31-40 años",
+              "41-50 años",
+              "51-60 años",
+              "61-70 años",
+              "más de 70 años"
+            ]
+          },
+          {
+            "id": "3.3",
+            "texto": "Escolaridad:",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "Primaria",
+              "Secundaria",
+              "Preparatoria",
+              "Universidad",
+              "Técnica",
+              "Ninguna"
+            ],
+            "sub_preguntas": [
+              {
+                "id": "3.3.2",
+                "texto": "Estado Escolaridad:",
+                "tipo": "opcion_multiple",
+                "opciones": [
+                  "Terminada",
+                  "Trunca"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "3.5",
+            "texto": "¿Tiene hijos?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "3.6",
+                "texto": "Escolaridad de los hijos:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              }
+            ]
+          },
+          {
+            "id": "3.8",
+            "texto": "Dependientes económicos:",
+            "tipo": "numerico"
+          }
+        ]
+      },
+      {
+        "id_seccion": 3,
+        "titulo": "CONDICIONES DE VIVIENDA Y SALUD",
+        "preguntas": [
+          {
+            "id": "3.9",
+            "texto": "Tipo de vivienda:",
+            "tipo": "opcion_multiple",
+            "opciones": [
+              "Propia",
+              "Propia Pagada",
+              "Prestada",
+              "Renta",
+              "Camper"
+            ],
+            "sub_preguntas": [
+              {
+                "id": "3.9.1",
+                "texto": "Monto de renta:",
+                "tipo": "numerico",
+                "condicional_en": "Renta"
+              }
+            ]
+          },
+          {
+            "id": "3.9.2",
+            "texto": "Material de la vivienda:",
+            "tipo": "grupo_preguntas",
+            "instrucciones": "Indique los materiales de construcción.",
+            "preguntas": [
+              {
+                "id": "3.9.2.1",
+                "texto": "Material de piso:",
+                "tipo": "texto_abierto"
+              },
+              {
+                "id": "3.9.2.2",
+                "texto": "Material de pared:",
+                "tipo": "texto_abierto"
+              },
+              {
+                "id": "3.9.2.3",
+                "texto": "Material del techo:",
+                "tipo": "texto_abierto"
+              }
+            ]
+          },
+          {
+            "id": "old_3.3",
+            "texto": "Servicios básicos:",
+            "tipo": "grupo_preguntas",
+            "preguntas": [
+              {
+                "id": "3.10",
+                "texto": "Acceso a energía eléctrica:",
+                "tipo": "texto_abierto"
+              },
+              {
+                "id": "3.11",
+                "texto": "Abastecimiento de agua:",
+                "tipo": "texto_abierto"
+              },
+              {
+                "id": "3.12",
+                "texto": "Drenaje:",
+                "tipo": "texto_abierto"
+              }
+            ]
+          },
+          {
+            "id": "3.14",
+            "texto": "¿Acceso a servicios de salud?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "3.14.1",
+                "texto": "Proveedor de servicio médico:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              }
+            ]
+          },
+          {
+            "id": "3.15",
+            "texto": "¿Enfermo crónico en el hogar?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "3.15.1",
+                "texto": "Qué enfermedad crónico degenerativa:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id_seccion": 4,
+        "titulo": "ECONOMÍA Y TECNOLOGÍA",
+        "preguntas": [
+          {
+            "id": "3.18",
+            "texto": "Ingreso mensual por pesca:",
+            "tipo": "numerico"
+          },
+          {
+            "id": "3.17",
+            "texto": "¿Ingresos complementarios por otro integrante?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "3.17.1",
+                "texto": "Actividad del ingreso:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              },
+              {
+                "id": "3.19",
+                "texto": "Promedio mensual de ingreso otros miembros del hogar:",
+                "tipo": "numerico",
+                "condicional_en": "Si"
+              }
+            ]
+          },
+          {
+            "id": "7.1",
+            "texto": "¿Con cuáles de los siguientes bienes cuenta?",
+            "tipo": "seleccion_multiple",
+            "opciones": [
+              "Teléfono inteligente",
+              "GPS",
+              "Ecosonda",
+              "Televisor",
+              "Computadora",
+              "Tablet",
+              "Sonar",
+              "Radio"
+            ]
+          },
+          {
+            "id": "7.4",
+            "texto": "¿Tiene conexión a internet?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "7.4.1",
+                "texto": "Qué tipo de conexión:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              },
+              {
+                "id": "7.4.0",
+                "texto": "Por qué no tiene internet:",
+                "tipo": "texto_abierto",
+                "condicional_en": "No"
+              }
+            ]
+          },
+          {
+            "id": "7.5",
+            "texto": "Qué actividades realiza con el internet/teléfono inteligente:",
+            "tipo": "seleccion_multiple",
+            "opciones": [
+              "Información",
+              "Diversión",
+              "Contacto y comunicación familia y amigos",
+              "Proveedores, ventas y negocio",
+              "Mareas",
+              "Estado del tiempo"
+            ]
+          },
+          {
+            "id": "7.6",
+            "texto": "¿Utiliza redes sociales?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "7.6.1",
+                "texto": "¿Cuáles?",
+                "tipo": "seleccion_multiple",
+                "condicional_en": "Si",
+                "opciones": [
+                  "Facebook",
+                  "Instagram",
+                  "Whatsapp",
+                  "Business suit",
+                  "Tik tok"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id_seccion": 5,
+        "titulo": "INCLUSIÓN FINANCIERA",
+        "preguntas": [
+          {
+            "id": "8.1",
+            "texto": "¿Lleva registros de sus ingresos y gastos, o un presupuesto?",
+            "tipo": "si_no"
+          },
+          {
+            "id": "8.2.1",
+            "texto": "¿Cuenta con alguna de las siguientes opciones financieras?",
+            "tipo": "seleccion_multiple",
+            "opciones": [
+              "Cuenta con ONG",
+              "Cuenta del Bienestar",
+              "Cuenta en Banco",
+              "Cuenta con prestamista",
+              "Cuenta con apoyo de familiares",
+              "Microfinancieras",
+              "Sociedades de crédito"
+            ]
+          },
+          {
+            "id": "8.5",
+            "texto": "¿Sabe qué es el Buró de Crédito?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "8.5.1",
+                "texto": "Conoce su situación en el Buró:",
+                "tipo": "si_no",
+                "condicional_en": "Si"
+              }
+            ]
+          },
+          {
+            "id": "8.6",
+            "texto": "¿Mantiene adeudos financieros?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "8.6.1",
+                "texto": "¿Conoce alguna financiera adicional? ¿Cuál?",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              }
+            ]
+          },
+          {
+            "id": "8.7",
+            "texto": "¿En algún momento ha sido financiado?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "8.7.1",
+                "texto": "¿Cuál?",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              },
+              {
+                "id": "8.7.2",
+                "texto": "¿Por qué no?",
+                "tipo": "texto_abierto",
+                "condicional_en": "No"
+              }
+            ]
+          },
+          {
+            "id": "8.10",
+            "texto": "¿Tus ahorros están protegidos en los bancos?",
+            "tipo": "si_no"
+          },
+          {
+            "id": "8.11",
+            "texto": "¿Ha tomado algún curso de ahorro y/o manejo financiero?",
+            "tipo": "si_no"
+          }
+        ]
+      }
+    ]
+  }
+}

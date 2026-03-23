@@ -105,6 +105,7 @@ def apply_custom_styles():
 # --- Constantes ---
 # Asegúrate de que esta ruta sea correcta para tu archivo survey.json
 SURVEY_FILE_PATH = os.path.join(os.path.dirname(__file__), "json", "survey.json")
+OLD_SURVEY_FILE_PATH = os.path.join(os.path.dirname(__file__), "json", "survey_old.json")
 COLLECTION_NAME = "survey_responses" # Nombre de la colección en Firestore
 USERS_COLLECTION = "survey_users" # Colección para almacenar roles de usuario
 
@@ -132,6 +133,8 @@ if 'current_menu' not in st.session_state:
     st.session_state.current_menu = "Mis Encuestas"
 if 'view_survey_data' not in st.session_state:
     st.session_state.view_survey_data = None
+if 'survey_version' not in st.session_state:
+    st.session_state.survey_version = "Actual"
 
 # --- Modelos Pydantic para Validación ---
 class SecondaryCondition(BaseModel):
@@ -231,6 +234,7 @@ def save_response_to_firestore(responses, username, status="completed", doc_id=N
             "user_id": username,
             "timestamp": firestore.SERVER_TIMESTAMP,
             "status": status,
+            "survey_version": st.session_state.get('survey_version', 'Actual'),
             "responses": serialized_responses
         }
         doc_ref.set(responses_to_save, merge=True)
@@ -546,22 +550,63 @@ def get_csv_download_link(user_filter=None, start_date=None, end_date=None):
             "id_registro": doc.id,
             "usuario": doc_data.get("user_id"),
             "fecha_registro": doc_data.get("timestamp"),
-            "estado": doc_data.get("status", "completed")
+            "estado": doc_data.get("status", "completed"),
+            "version": doc_data.get("survey_version", "Actual")
         }
         # Procesar respuestas
         responses = doc_data.get("responses", {})
         for k, v in responses.items():
-            # Si es lista o dict (tablas/grids), convertir a JSON string para que quepa en una celda CSV
-            if isinstance(v, (list, dict)):
-                row[k] = json.dumps(v, ensure_ascii=False)
+            if isinstance(v, dict):
+                # Aplanar diccionarios (Ej. escalas, grids)
+                for sub_k, sub_v in v.items():
+                    flat_key = f"{k}_{sub_k}"
+                    if isinstance(sub_v, dict):
+                        # Aplanar un nivel más (Ej. tablas complejas)
+                        for sub_sub_k, sub_sub_v in sub_v.items():
+                            flat_sub_key = f"{flat_key}_{sub_sub_k}"
+                            if isinstance(sub_sub_v, list):
+                                row[flat_sub_key] = ", ".join(map(str, sub_sub_v))
+                            else:
+                                row[flat_sub_key] = sub_sub_v
+                    elif isinstance(sub_v, list):
+                        row[flat_key] = ", ".join(map(str, sub_v))
+                    else:
+                        row[flat_key] = sub_v
+            elif isinstance(v, list):
+                if len(v) > 0 and isinstance(v[0], dict):
+                    # Tablas simples (lista de dicts): dejamos como JSON para evitar columnas infinitas
+                    row[k] = json.dumps(v, ensure_ascii=False)
+                else:
+                    # Listas simples de selección múltiple -> separados por comas
+                    row[k] = ", ".join(map(str, v))
             else:
                 row[k] = v
         data.append(row)
-    
+
     if not data:
         return None
         
     df = pd.DataFrame(data)
+    
+    # --- Ordenar las columnas de manera lógica ---
+    def sort_col(col_name):
+        metadata_cols = ["id_registro", "usuario", "fecha_registro", "estado", "version"]
+        if col_name in metadata_cols:
+            return (0, metadata_cols.index(col_name), str(col_name))
+        elif str(col_name).startswith("skip_section_"):
+            try:
+                num = int(str(col_name).split("_")[-1])
+                return (1, [num], str(col_name))
+            except ValueError:
+                return (1, [999], str(col_name))
+        else:
+            # Extraer números para ordenamiento natural (ej. '1.2' se alinea antes que '1.10')
+            nums = [int(n) for n in re.findall(r'\d+', str(col_name))]
+            return (2, nums, str(col_name))
+            
+    sorted_columns = sorted(df.columns, key=sort_col)
+    df = df[sorted_columns]
+    
     return df.to_csv(index=False).encode('utf-8')
 
 def reset_survey_state():
@@ -1011,9 +1056,14 @@ def login_page():
 def survey_app():
     apply_custom_styles() # Aplicar estilos visuales
 
-    # Cargar datos siempre para reflejar cambios en el JSON inmediatamente
-    st.session_state.survey_data = load_survey_data(SURVEY_FILE_PATH)
+    # Determinar qué JSON cargar según la versión seleccionada
+    current_path = SURVEY_FILE_PATH if st.session_state.survey_version == "Actual" else OLD_SURVEY_FILE_PATH
+    
+    st.session_state.survey_data = load_survey_data(current_path)
+    
     if not st.session_state.survey_data:
+        if st.session_state.survey_version != "Actual":
+            st.error("⚠️ Archivo 'survey_old.json' no encontrado. Por favor cree este archivo en la carpeta 'json/'.")
         return
 
     survey = st.session_state.survey_data
@@ -1050,6 +1100,15 @@ def survey_app():
     ):
         st.session_state.current_menu = "Nueva Encuesta"
         st.rerun()
+        
+    # Selector de Versión de Encuesta (Solo visible al crear Nueva Encuesta)
+    if st.session_state.current_menu == "Nueva Encuesta":
+        st.sidebar.markdown("---")
+        new_version = st.sidebar.radio("Versión a Capturar", ["Actual", "Antigua"], index=0 if st.session_state.survey_version == "Actual" else 1)
+        if new_version != st.session_state.survey_version:
+            st.session_state.survey_version = new_version
+            reset_survey_state() # Reiniciar estado para evitar conflictos entre JSONs
+            st.rerun()
 
     # --- Panel de Administrador (Solo visible para admins) ---
     if st.session_state.role == 'admin':
