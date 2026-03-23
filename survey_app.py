@@ -10,6 +10,7 @@ from typing import List, Optional, Union, Any
 import hashlib
 import pandas as pd
 import requests
+import re
 
 # --- Firebase Initialization ---
 # IMPORTANTE: Para mayor seguridad, es altamente recomendable usar los secretos de Streamlit
@@ -458,8 +459,13 @@ def render_readonly_view():
     if survey_schema:
         for section in survey_schema['secciones']:
             st.subheader(f"Sección {section['id_seccion']}: {section['titulo']}")
-            for q in section['preguntas']:
-                _render_readonly_question(q, responses)
+            
+            skip_key = f"skip_section_{section['id_seccion']}"
+            if responses.get(skip_key, False):
+                st.info("⏭️ Esta sección fue omitida por el encuestado (Sin respuesta).")
+            else:
+                for q in section['preguntas']:
+                    _render_readonly_question(q, responses)
             st.divider()
 
 def render_user_surveys_view():
@@ -679,6 +685,11 @@ def validate_current_section():
     """Valida todas las preguntas de la sección actual."""
     survey = st.session_state.survey_data
     current_section = survey['secciones'][st.session_state.current_section_index]
+    
+    skip_key = f"skip_section_{current_section['id_seccion']}"
+    if st.session_state.responses.get(skip_key, False):
+        return [] # Retornar sin errores si la sección entera está marcada como omitida
+        
     errors = []
     for question in current_section['preguntas']:
         validate_question_recursive(question, None, errors)
@@ -1185,10 +1196,21 @@ def survey_app():
 
     st.header(f"Sección {current_section['id_seccion']}: {current_section['titulo']}")
     
-    # Renderizar todas las preguntas de la sección
-    for question in questions:
-        st.subheader(f"Pregunta {question['id']}")
-        render_question(question)
+    # --- Opción para omitir la sección completa ---
+    skip_key = f"skip_section_{current_section['id_seccion']}"
+    is_skipped_default = st.session_state.responses.get(skip_key, False)
+    
+    is_skipped = st.checkbox("⏭️ **Marcar toda la sección como 'Sin respuesta' (Omitir)**", value=is_skipped_default, key=f"chk_{skip_key}")
+    st.session_state.responses[skip_key] = is_skipped
+
+    if not is_skipped:
+        # Renderizar todas las preguntas de la sección
+        for question in questions:
+            st.subheader(f"Pregunta {question['id']}")
+            render_question(question)
+            st.markdown("---")
+    else:
+        st.info("ℹ️ Sección omitida. Se ignorará la validación obligatoria y puede continuar a la siguiente sección.")
         st.markdown("---")
 
     # Botones de navegación
