@@ -5,3 +5,5 @@ __pycache__/
 # Secretos y Credenciales
 .streamlit/secrets.toml
 surver-fisherman-uabcs-firebase-adminsdk-fbsvc-5c73dae273.json
+
+encuesta_data_2026-03-23.csv
