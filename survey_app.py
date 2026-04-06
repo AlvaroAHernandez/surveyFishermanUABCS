@@ -1099,6 +1099,7 @@ def survey_app():
         type="primary" if st.session_state.current_menu == "Nueva Encuesta" else "secondary"
     ):
         st.session_state.current_menu = "Nueva Encuesta"
+        reset_survey_state() # Limpiar el estado para iniciar una encuesta en blanco
         st.rerun()
         
     # Selector de Versión de Encuesta (Solo visible al crear Nueva Encuesta)

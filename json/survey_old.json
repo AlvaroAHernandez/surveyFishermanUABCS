@@ -13,11 +13,6 @@
             "tipo": "texto_abierto"
           },
           {
-            "id": "1.2",
-            "texto": "Nombre del encuestador:",
-            "tipo": "texto_abierto"
-          },
-          {
             "id": "old_lat",
             "texto": "Latitud Y:",
             "tipo": "texto_abierto"
@@ -26,12 +21,17 @@
             "id": "old_lon",
             "texto": "Longitud X:",
             "tipo": "texto_abierto"
+          },
+          {
+            "id": "1.2",
+            "texto": "Encuestador:",
+            "tipo": "texto_abierto"
           }
         ]
       },
       {
         "id_seccion": 2,
-        "titulo": "INFORMACIÓN DEL ENCUESTADO Y DEMOGRÁFICA",
+        "titulo": "INFORMACIÓN DEL ENCUESTADO",
         "preguntas": [
           {
             "id": "2.1",
@@ -53,6 +53,22 @@
             "texto": "Municipio de origen:",
             "tipo": "texto_abierto"
           },
+          {
+             "id": "old_2.4.1",
+            "texto": "Otro estado (especifique):",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "2.5.1",
+            "texto": "¿Qué Cooperativa?",
+            "tipo": "texto_abierto"
+          }
+        ]
+      },
+      {
+        "id_seccion": 3,
+        "titulo": "INFORMACIÓN DEMOGRÁFICA",
+        "preguntas": [
           {
             "id": "3.4",
             "texto": "Estado Civil:",
@@ -103,6 +119,11 @@
             ]
           },
           {
+            "id": "3.1",
+            "texto": "Edad:",
+            "tipo": "numerico"
+          },
+          {
             "id": "3.5",
             "texto": "¿Tiene hijos?",
             "tipo": "si_no",
@@ -112,6 +133,12 @@
                 "texto": "Escolaridad de los hijos:",
                 "tipo": "texto_abierto",
                 "condicional_en": "Si"
+              },
+              {
+                "id": "3.5.1",
+                "texto": "Número de hijos (Hijos2):",
+                "tipo": "numerico",
+                "condicional_en": "Si"
               }
             ]
           },
@@ -119,11 +146,16 @@
             "id": "3.8",
             "texto": "Dependientes económicos:",
             "tipo": "numerico"
+          },
+          {
+            "id": "3.13",
+            "texto": "Personas en el hogar:",
+            "tipo": "numerico"
           }
         ]
       },
       {
-        "id_seccion": 3,
+        "id_seccion": 4,
         "titulo": "CONDICIONES DE VIVIENDA Y SALUD",
         "preguntas": [
           {
@@ -188,6 +220,16 @@
                 "id": "3.12",
                 "texto": "Drenaje:",
                 "tipo": "texto_abierto"
+              },
+              {
+                "id": "old_3.12.1",
+                "texto": "Servicio telefónico:",
+                "tipo": "texto_abierto"
+              },
+              {
+                "id": "old_internet_hogar",
+                "texto": "Servicio de internet:",
+                "tipo": "texto_abierto"
               }
             ]
           },
@@ -216,18 +258,18 @@
                 "condicional_en": "Si"
               }
             ]
+          },
+          {
+            "id": "3.16",
+            "texto": "Horas de recreación a la semana:",
+            "tipo": "numerico"
           }
         ]
       },
       {
-        "id_seccion": 4,
-        "titulo": "ECONOMÍA Y TECNOLOGÍA",
+        "id_seccion": 5,
+        "titulo": "ECONOMÍA",
         "preguntas": [
-          {
-            "id": "3.18",
-            "texto": "Ingreso mensual por pesca:",
-            "tipo": "numerico"
-          },
           {
             "id": "3.17",
             "texto": "¿Ingresos complementarios por otro integrante?",
@@ -238,15 +280,25 @@
                 "texto": "Actividad del ingreso:",
                 "tipo": "texto_abierto",
                 "condicional_en": "Si"
-              },
-              {
-                "id": "3.19",
-                "texto": "Promedio mensual de ingreso otros miembros del hogar:",
-                "tipo": "numerico",
-                "condicional_en": "Si"
               }
             ]
           },
+          {
+            "id": "3.18",
+            "texto": "Ingreso mensual por pesca:",
+            "tipo": "numerico"
+          },
+          {
+            "id": "3.19",
+            "texto": "Promedio mensual de ingreso otros miembros del hogar:",
+            "tipo": "numerico"
+          }
+        ]
+      },
+      {
+        "id_seccion": 6,
+        "titulo": "TECNOLOGÍA",
+        "preguntas": [
           {
             "id": "7.1",
             "texto": "¿Con cuáles de los siguientes bienes cuenta?",
@@ -260,6 +312,40 @@
               "Tablet",
               "Sonar",
               "Radio"
+            ]
+          },
+          {
+            "id": "7.1.1",
+            "texto": "Por qué no dispone de los bienes anteriores:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "7.2",
+            "texto": "Qué actividades realiza con el teléfono inteligente:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "7.3",
+            "texto": "Qué actividades realiza con la computadora:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "old_tv_paga",
+            "texto": "¿Tiene sistema de televisión de paga?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "old_tv_servicio",
+                "texto": "Qué servicio de televisión tiene contratado:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              },
+              {
+                "id": "old_tv_no_paga",
+                "texto": "Por qué no tiene televisión de paga:",
+                "tipo": "texto_abierto",
+                "condicional_en": "No"
+              }
             ]
           },
           {
@@ -282,6 +368,16 @@
             ]
           },
           {
+            "id": "old_internet_telmex",
+            "texto": "¿Tiene conexión fija de Telmex?",
+            "tipo": "si_no"
+          },
+          {
+            "id": "old_internet_celular",
+            "texto": "¿Tiene conexión de celular?",
+            "tipo": "si_no"
+          },
+          {
             "id": "7.5",
             "texto": "Qué actividades realiza con el internet/teléfono inteligente:",
             "tipo": "seleccion_multiple",
@@ -289,7 +385,7 @@
               "Información",
               "Diversión",
               "Contacto y comunicación familia y amigos",
-              "Proveedores, ventas y negocio",
+              "Provedores, ventas y negocio",
               "Mareas",
               "Estado del tiempo"
             ]
@@ -311,13 +407,77 @@
                   "Business suit",
                   "Tik tok"
                 ]
+              },
+              {
+                "id": "old_no_redes",
+                "texto": "Por qué no utiliza redes:",
+                "tipo": "texto_abierto",
+                "condicional_en": "No"
+              }
+            ]
+          },
+          {
+            "id": "7.7",
+            "texto": "¿Utiliza alguna herramienta para llevar sus registros?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "7.7.1",
+                "texto": "Qué herramienta:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              }
+            ]
+          },
+          {
+            "id": "7.8",
+            "texto": "Herramientas tecnológicas",
+            "tipo": "seleccion_multiple",
+            "opciones": [
+              "Programa o App",
+              "GPS localización precisa",
+              "Sonar para dancos de peces y profundidad",
+              "App para gestión de capturas",
+              "Comunicación satelital",
+              "Registros de la Unidad Económica"
+            ]
+          },
+          {
+            "id": "7.9",
+            "texto": "¿Estaría interesado en participar en talleres de capacitación?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "7.9.1",
+                "texto": "Por qué motivo:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              },
+              {
+                "id": "7.9.2",
+                "texto": "Por qué no le interesa:",
+                "tipo": "texto_abierto",
+                "condicional_en": "No"
+              }
+            ]
+          },
+          {
+            "id": "7.10",
+            "texto": "¿Conoce alguna organización brindando estos servicios?",
+            "tipo": "si_no",
+            "sub_preguntas": [
+              {
+                "id": "7.10.1",
+                "texto": "Cual:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
               }
             ]
           }
         ]
       },
       {
-        "id_seccion": 5,
+        "id_seccion": 7,
         "titulo": "INCLUSIÓN FINANCIERA",
         "preguntas": [
           {
@@ -327,16 +487,85 @@
           },
           {
             "id": "8.2.1",
-            "texto": "¿Cuenta con alguna de las siguientes opciones financieras?",
+            "texto": "Cuenta con opciones financieras:",
             "tipo": "seleccion_multiple",
             "opciones": [
               "Cuenta con ONG",
               "Cuenta del Bienestar",
-              "Cuenta en Banco",
               "Cuenta con prestamista",
+              "Cuenta en Banco",
               "Cuenta con apoyo de familiares",
               "Microfinancieras",
               "Sociedades de crédito"
+            ]
+          },
+          {
+            "id": "8.3",
+            "texto": "Por que no tiene una cuenta formal:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "8.14",
+            "texto": "Experiencia de préstamos/financiamientos",
+            "tipo": "tabla_compleja",
+            "filas": [
+              "Prestamista formal (banco/institucion financiera)",
+              "Prestamista informal",
+              "Amigos o familiares",
+              "Microfinanzas o préstamos grupales",
+              "Grupos informales de crédito/ahorro (sociedades funerarias, cundinas, etc.)",
+              "Apoyo Gubernamental (Bienestar)",
+              "Organización no gubernamental (ONG)"
+            ],
+            "columnas": [
+              {
+                "id": "8.14.1",
+                "texto": "¿Usted o alguien en su hogar podría pedir un préstamo o pedir prestado en efectivo o en especie de [FUENTE]si así lo quisiera?",
+                "tipo": "opcion_multiple",
+                "opciones": [
+                  "1) si",
+                  "2) no",
+                  "3) Tal vez"
+                ]
+              },
+              {
+                "id": "8.14.2",
+                "texto": "¿Alguien en su hogar ha tomado algún préstamo o pedido prestado en efectivo o en especie de [FUENTE]?",
+                "tipo": "opcion_multiple",
+                "opciones": [
+                  "1) Sí, en efectivo",
+                  "2) Sí, en especie",
+                  "3) Sí, efectivo y especie",
+                  "4) No",
+                  "5) No lo sé"
+                ]
+              },
+              {
+                "id": "8.14.3",
+                "texto": "¿Quién toma la decisión de pedir prestado de [FUENTE] la mayor parte del tiempo? [puede seleccionar hasta 3]",
+                "tipo": "seleccion_multiple",
+                "opciones": [
+                  "1) Yo",
+                  "2) Cónyuge del hogar",
+                  "3) Pareja/cónyuge fuera del hogar",
+                  "4) otro miembro",
+                  "5) Ningún miembro",
+                  "6) No se tomó esa decisión"
+                ]
+              },
+              {
+                "id": "8.14.4",
+                "texto": "¿Quién hace la decisión sobre qué hacer con el dinero/artículo tomado de [FUENTE] la mayoría de ¿el tiempo? [puede seleccionar hasta 3]",
+                "tipo": "seleccion_multiple",
+                "opciones": [
+                  "1) Yo",
+                  "2) Cónyuge del hogar",
+                  "3) Pareja/cónyuge fuera del hogar",
+                  "4) otro miembro",
+                  "5) Ningún miembro",
+                  "6) No se tomó esa decisión"
+                ]
+              }
             ]
           },
           {
@@ -358,8 +587,14 @@
             "tipo": "si_no",
             "sub_preguntas": [
               {
-                "id": "8.6.1",
-                "texto": "¿Conoce alguna financiera adicional? ¿Cuál?",
+                "id": "old_8.6.1",
+                "texto": "Conoce alguna financiera adicional:",
+                "tipo": "texto_abierto",
+                "condicional_en": "Si"
+              },
+              {
+                "id": "old_cual2",
+                "texto": "Cual2:",
                 "tipo": "texto_abierto",
                 "condicional_en": "Si"
               }
@@ -383,6 +618,16 @@
                 "condicional_en": "No"
               }
             ]
+          },
+          {
+            "id": "8.8",
+            "texto": "Hay banco en tu comunidad:",
+            "tipo": "texto_abierto"
+          },
+          {
+            "id": "8.9",
+            "texto": "Usted usa aplicación del banco:",
+            "tipo": "si_no"
           },
           {
             "id": "8.10",
