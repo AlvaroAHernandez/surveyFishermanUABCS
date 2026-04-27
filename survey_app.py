@@ -216,7 +216,7 @@ def load_survey_data(file_path):
         st.json(e.errors()) # Mostrar detalles del error
         return None
 
-def save_response_to_firestore(responses, username, status="completed", doc_id=None):
+def save_response_to_firestore(responses, username, status="completed", doc_id=None, survey_version=None):
     """Guarda las respuestas recolectadas en Firestore."""
     try:
         if doc_id:
@@ -234,7 +234,7 @@ def save_response_to_firestore(responses, username, status="completed", doc_id=N
             "user_id": username,
             "timestamp": firestore.SERVER_TIMESTAMP,
             "status": status,
-            "survey_version": st.session_state.get('survey_version', 'Actual'),
+            "survey_version": survey_version or st.session_state.get('survey_version', 'Actual'),
             "responses": serialized_responses
         }
         doc_ref.set(responses_to_save, merge=True)
@@ -393,6 +393,212 @@ def delete_survey_from_db(survey_id):
         st.error(f"Error al eliminar la encuesta: {e}")
         return False
 
+def delete_all_old_surveys():
+    """Elimina TODAS las encuestas marcadas con la versión 'Antigua'."""
+    try:
+        docs = db.collection(COLLECTION_NAME).where(filter=FieldFilter("survey_version", "==", "Antigua")).stream()
+        count = 0
+        for doc in docs:
+            doc.reference.delete()
+            count += 1
+        return count
+    except Exception as e:
+        st.error(f"Error al eliminar masivamente: {e}")
+        return -1
+
+def import_surveys_from_csv(uploaded_file):
+    """Importa encuestas antiguas desde un archivo CSV hacia Firestore mapeando estructuras complejas."""
+    try:
+        # Leer archivo como texto para evitar problemas con números/fechas
+        df = pd.read_csv(uploaded_file, dtype=str)
+        # Reemplazar NaN con None
+        df = df.where(pd.notnull(df), None)
+        
+        def clean_val(val):
+            if val is None or str(val).strip() in ['', '*', 'No aplica', 'no respondio', 'No contesto', 'No lo sé', 'nan', 'NaN']:
+                return None
+            return str(val).strip()
+
+        def check_si(val):
+            v = clean_val(val)
+            return v is not None and v.lower() in ['1', 'si', 'sí', 'x', 'verdadero', 'true']
+            
+        success_count = 0
+        for index, row in df.iterrows():
+            r = {}
+            
+            # --- 1. MAPEO DIRECTO DE VARIABLES SIMPLES ---
+            mapeo_directo = {
+                "1.1": 'Lugar de la encuesta',
+                "old_lat": 'Latitud Y ',
+                "old_lon": 'Longitud X',
+                "1.2": 'Encuestador',
+                "2.1": 'Nombre encuestado',
+                "old_2.2": 'Organización',
+                "old_2.3": 'Años trabajando',
+                "old_2.4": 'Municipio de origen',
+                "old_2.4.1": 'Otro estado (especifique)',
+                "2.5.1": 'que Cooperativa',
+                "3.4": 'Estado Civil',
+                "3.3": 'Escolaridad ',
+                "3.1": 'Edad',
+                "3.5": 'Hijos',
+                "3.8": 'Dependientes económicos',
+                "3.9": 'Tipo vivienda',
+                "3.9.1": 'Monto de renta',
+                "3.9.2.1": 'Material de piso',
+                "3.9.2.2": 'Material de pared',
+                "3.9.2.3": 'Material del techo',
+                "3.10": 'Acceso a energía eléctrica',
+                "3.11": 'Abastecimiento de agua',
+                "3.12": 'Drenaje',
+                "old_3.12.1": 'Servicio telefónico',
+                "old_internet_hogar": 'Servicio de internet',
+                "3.13": 'Personas en el hogar',
+                "3.14": 'Acceso a servicios de salud',
+                "3.14.1": 'Provedor de servicio médico',
+                "3.15": 'Enfermo crónico en el hogar',
+                "3.15.1": 'Que enfermedad cronico degenerativa',
+                "3.16": 'Horas de recreación a la semana',
+                "3.17": 'Ingresos complementarios por otro integrante',
+                "3.17.1": 'Actividad del ingreso',
+                "3.18": 'Ingreso mensual por pesca',
+                "3.19": 'Promedio mensual de ingreso otros miembros del hogar',
+                "3.5.1": 'Hijos2',
+                "3.6": 'Escolaridad de los hijos',
+                "7.1.1": 'Por que no dispone de los bienes anteriores',
+                "7.2": 'Que actividades realiza con el telefono inteligente',
+                "7.3": 'que actividades realiza con la computadora',
+                "old_tv_paga": 'Tiene sistema de televición de paga',
+                "old_tv_servicio": 'Que servicio de televisión tiene contratado',
+                "old_tv_no_paga": 'Por que no tiene televisión de paga',
+                "7.4": 'Tiene conexión de internet ',
+                "7.4.1": 'Que tipo de conexión',
+                "7.4.0": 'Por que no tiene internet',
+                "old_internet_telmex": 'Tiene conexión fija de Telmex',
+                "old_internet_celular": 'Tiene conexión de celular',
+                "7.6": 'Utiliza redes sociales',
+                "old_no_redes": 'No utiliza redes',
+                "7.7": 'Utiliza alguna herramienta para llevar sus registros',
+                "7.7.1": 'Que herramienta',
+                "7.9": 'Estaría interesado en participar en talleres de capacitación',
+                "7.9.1": 'Por que motivo',
+                "7.9.2": 'Por que no le interesa',
+                "7.10": 'Conoce alguna organización brindando estos servicios',
+                "7.10.1": 'Cual',
+                "8.1": 'Lleva registros de sus ingresos y gastos, o un presupuesto',
+                "8.3": 'Por que no tiene una cuenta formal',
+                "8.5": 'Sabe que es el Buró de Crédito',
+                "8.5.1": 'Conoce su situación en el Buró',
+                "8.6": 'Mantiene adeudos financieros',
+                "old_8.6.1": 'Conoce alguna financiera adicional ',
+                "old_cual2": 'Cual2',
+                "8.7": 'En algún momento ha sido financiado',
+                "8.7.1": 'Cual3',
+                "8.7.2": 'Por que no',
+                "8.8": 'Hay banco en tu comunidad',
+                "8.9": 'Usted usa aplicación del banco',
+                "8.10": 'Tus ahorros estan protejidos en los bancos',
+                "8.11": 'Ha tomado algun curso de aahorro yo manejo financiero'
+            }
+            
+            for key_id, col_name in mapeo_directo.items():
+                val = clean_val(row.get(col_name))
+                if val is not None:
+                    r[key_id] = val
+
+            # --- 2. AGRUPACIONES DE SELECCIÓN MÚLTIPLE (LISTAS) ---
+            # 7.1 Bienes tecnológicos
+            bienes = []
+            if check_si(row.get('Tiene teléfono inteligente')): bienes.append("Teléfono inteligente")
+            if check_si(row.get('Tiene GPS')): bienes.append("GPS")
+            if check_si(row.get('Tinene ecosonda')): bienes.append("Ecosonda")
+            if check_si(row.get('Tiene televisor')): bienes.append("Televisor")
+            if check_si(row.get('Tiene computadora')): bienes.append("Computadora")
+            if check_si(row.get('Tiene tablet')): bienes.append("Tablet")
+            if check_si(row.get('Tiene sonar')): bienes.append("Sonar")
+            if check_si(row.get('Tiene radio')): bienes.append("Radio")
+            if bienes: r["7.1"] = bienes
+
+            # 7.5 Actividades de internet
+            acts_int = []
+            if check_si(row.get('Información')): acts_int.append("Información")
+            if check_si(row.get('Diversión')): acts_int.append("Diversión")
+            if check_si(row.get('Contacto y comunicación familia y amigos')): acts_int.append("Contacto y comunicación familia y amigos")
+            if check_si(row.get('Provedores, ventas y negocio')): acts_int.append("Provedores, ventas y negocio")
+            if check_si(row.get('Mareas')): acts_int.append("Mareas")
+            if check_si(row.get('Estado del tiempo')): acts_int.append("Estado del tiempo")
+            if acts_int: r["7.5"] = acts_int
+
+            # 7.6.1 Redes sociales
+            redes = []
+            if check_si(row.get('Facebook')): redes.append("Facebook")
+            if check_si(row.get('Instagram')): redes.append("Instagram")
+            if check_si(row.get('Whatsapp')): redes.append("Whatsapp")
+            if check_si(row.get('Business suit')): redes.append("Business suit")
+            if check_si(row.get('Tik tok')): redes.append("Tik tok")
+            if redes: r["7.6.1"] = redes
+            
+            # 7.8 Herramientas de registro
+            herramientas = []
+            if check_si(row.get('Programa o App')): herramientas.append("Programa o App")
+            if check_si(row.get('GPS localización precisa')): herramientas.append("GPS localización precisa")
+            if check_si(row.get('Sonar para dancos de peces y profundidad')): herramientas.append("Sonar para dancos de peces y profundidad")
+            if check_si(row.get('App para gestión de capturas')): herramientas.append("App para gestión de capturas")
+            if check_si(row.get('Comunicación satelital')): herramientas.append("Comunicación satelital")
+            if check_si(row.get('Registros de la Unidad Económica')): herramientas.append("Registros de la Unidad Económica")
+            if herramientas: r["7.8"] = herramientas
+            
+            # 8.2.1 Cuentas financieras
+            cuentas = []
+            if check_si(row.get('Cuenta con ONG')): cuentas.append("Cuenta con ONG")
+            if check_si(row.get('Cuenta del Bienestar')): cuentas.append("Cuenta del Bienestar")
+            if check_si(row.get('Cuenta con prestamista ')): cuentas.append("Cuenta con prestamista")
+            if check_si(row.get('Cuenta en Banco')): cuentas.append("Cuenta en Banco")
+            if check_si(row.get('Cuenta con apoyo de familiares')): cuentas.append("Cuenta con apoyo de familiares")
+            if check_si(row.get('Microfinancieras')): cuentas.append("Microfinancieras")
+            if check_si(row.get('Sociedades de credito')): cuentas.append("Sociedades de crédito")
+            if cuentas: r["8.2.1"] = cuentas
+
+            # --- 3. MATRIZ COMPLEJA 8.14 (PRÉSTAMOS) ---
+            matriz_prestamos = {}
+            filas_matriz = {
+                "Organización no gubernamental (ONG)": ['en ONG', 'en ONG3', 'En ONG2', 'ONG'],
+                "Apoyo Gubernamental (Bienestar)": ['Bienestar y gobierno', 'Prestamo gobierno', 'Gobierno', 'Gobierno2'],
+                "Prestamista informal": ['Prestamista informal', 'Prestamista informal4', 'Prestamista informal2', 'Prestamista informal3'],
+                "Prestamista formal (banco/institucion financiera)": ['Prestamista formal (banco/institución financiera)', 'Prestamista formal', 'Banco', 'Banco2'],
+                "Amigos o familiares": ['Amigos o familiares', 'Amigos o familia', 'Amigos o familiares3', 'Amigos o familiares2'],
+                "Microfinanzas o préstamos grupales": ['Microfinanciera', 'Micro financiera', 'Microfinanciera2', 'Microfinanciera3'],
+                "Grupos informales de crédito/ahorro (sociedades funerarias, cundinas, etc.)": ['Sociedades de crédito', 'Sociedades financieras', 'Sociedades de crédito2', 'Sociedades2']
+            }
+
+            for nombre_fila, columnas_excel in filas_matriz.items():
+                fila_data = {}
+                v1, v2, v3, v4 = [clean_val(row.get(c)) for c in columnas_excel]
+                if v1: fila_data["8.14.1"] = v1
+                if v2: fila_data["8.14.2"] = v2
+                if v3: fila_data["8.14.3"] = [v3]
+                if v4: fila_data["8.14.4"] = [v4]
+                if fila_data: matriz_prestamos[nombre_fila] = fila_data
+                    
+            if matriz_prestamos:
+                r["8.14"] = matriz_prestamos
+
+            # --- 4. GUARDAR EN FIREBASE ---
+            if r:
+                # Guardar directo en Firebase marcándolo como "Antigua"
+                save_response_to_firestore(
+                    r, 
+                    st.session_state.username, 
+                    status="completed",
+                    survey_version="Antigua"
+                )
+                success_count += 1
+        return success_count
+    except Exception as e:
+        st.error(f"Error en la importación: {e}")
+        return -1
+
 def _render_readonly_question(q, responses, parent_id=""):
     """Renderiza recursivamente una pregunta y su respuesta en modo solo lectura."""
     q_id = q['id']
@@ -486,7 +692,40 @@ def render_user_surveys_view():
         st.info("Aún no has capturado ninguna encuesta o no hay borradores guardados.")
         return
 
+    # --- Filtro por Localidad y Contador ---
+    localidades = set()
     for survey in surveys:
+        resp = survey.get("responses", {})
+        loc = resp.get("1.1")
+        if loc and str(loc).strip() != "":
+            localidades.add(str(loc).strip())
+            
+    localidades_lista = ["Todas"] + sorted(list(localidades))
+    
+    col_filtro, col_metric = st.columns([3, 1])
+    with col_filtro:
+        filtro_localidad = st.selectbox("🌍 Filtrar por Localidad (Lugar de la encuesta):", localidades_lista)
+        
+    surveys_filtradas = []
+    for survey in surveys:
+        if filtro_localidad == "Todas":
+            surveys_filtradas.append(survey)
+        else:
+            resp = survey.get("responses", {})
+            loc = resp.get("1.1")
+            if loc and str(loc).strip() == filtro_localidad:
+                surveys_filtradas.append(survey)
+                
+    with col_metric:
+        st.metric(label="📊 Total de encuestas", value=len(surveys_filtradas))
+        
+    st.divider()
+    
+    if not surveys_filtradas:
+        st.warning(f"No se encontraron encuestas para la localidad: {filtro_localidad}")
+        return
+
+    for survey in surveys_filtradas:
         status = survey.get("status", "desconocido")
         status_icon = "✅" if status == "completed" else "📝"
         status_text = "Completada" if status == "completed" else "Borrador"
@@ -1201,6 +1440,26 @@ def survey_app():
                     )
                 else:
                     st.warning("No se encontraron datos con esos filtros.")
+                
+        # 4. Importador Masivo (CSV)
+        with st.sidebar.expander("⬆️ Importar CSV Antiguo"):
+            st.write("Sube tu archivo `.csv` con las encuestas viejas. Recuerda que los encabezados de las columnas deben ser los IDs (ej. `1.1`, `old_lat`).")
+            uploaded_csv = st.file_uploader("Seleccionar CSV", type=['csv'])
+            if uploaded_csv is not None:
+                if st.button("Subir a Firebase"):
+                    with st.spinner("Importando encuestas..."):
+                        count = import_surveys_from_csv(uploaded_csv)
+                        if count > 0:
+                            st.success(f"¡Se importaron {count} encuestas exitosamente!")
+                            
+        # 5. Deshacer Importación (Peligro)
+        with st.sidebar.expander("⚠️ Deshacer Importación"):
+            st.warning("Esto eliminará TODAS las encuestas en la base de datos que estén marcadas como 'Antigua'.")
+            if st.button("Borrar Encuestas Antiguas"):
+                with st.spinner("Eliminando registros..."):
+                    del_count = delete_all_old_surveys()
+                    if del_count >= 0:
+                        st.success(f"¡Se eliminaron {del_count} encuestas antiguas exitosamente!")
 
     if st.sidebar.button("Cerrar Sesión"):
         st.session_state.logged_in = False
