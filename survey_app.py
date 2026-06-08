@@ -694,27 +694,41 @@ def render_user_surveys_view():
 
     # --- Filtro por Localidad y Contador ---
     localidades = set()
+    usuarios = set()
     for survey in surveys:
         resp = survey.get("responses", {})
         loc = resp.get("1.1")
         if loc and str(loc).strip() != "":
             localidades.add(str(loc).strip())
+        user = survey.get("user_id")
+        if user:
+            usuarios.add(user)
             
     localidades_lista = ["Todas"] + sorted(list(localidades))
+    usuarios_lista = ["Todos"] + sorted(list(usuarios))
     
-    col_filtro, col_metric = st.columns([3, 1])
-    with col_filtro:
-        filtro_localidad = st.selectbox("🌍 Filtrar por Localidad (Lugar de la encuesta):", localidades_lista)
+    if is_admin:    
+        col_loc, col_user, col_metric = st.columns([2, 2, 1])
+        with col_loc:
+            filtro_localidad = st.selectbox("🌍 Filtrar por Localidad:", localidades_lista)
+        with col_user:
+            filtro_usuario = st.selectbox("👤 Filtrar por Encuestador:", usuarios_lista)
+    else:
+        col_loc, col_metric = st.columns([3, 1])
+        with col_loc:
+            filtro_localidad = st.selectbox("🌍 Filtrar por Localidad:", localidades_lista)
+        filtro_usuario = "Todos"
         
     surveys_filtradas = []
     for survey in surveys:
-        if filtro_localidad == "Todas":
+        resp = survey.get("responses", {})
+        loc = resp.get("1.1")
+        
+        match_loc = (filtro_localidad == "Todas") or (loc and str(loc).strip() == filtro_localidad)
+        match_user = (filtro_usuario == "Todos") or (survey.get("user_id") == filtro_usuario)
+        
+        if match_loc and match_user:
             surveys_filtradas.append(survey)
-        else:
-            resp = survey.get("responses", {})
-            loc = resp.get("1.1")
-            if loc and str(loc).strip() == filtro_localidad:
-                surveys_filtradas.append(survey)
                 
     with col_metric:
         st.metric(label="📊 Total de encuestas", value=len(surveys_filtradas))
@@ -722,7 +736,7 @@ def render_user_surveys_view():
     st.divider()
     
     if not surveys_filtradas:
-        st.warning(f"No se encontraron encuestas para la localidad: {filtro_localidad}")
+        st.warning("No se encontraron encuestas que coincidan con los filtros seleccionados.")
         return
 
     for survey in surveys_filtradas:
